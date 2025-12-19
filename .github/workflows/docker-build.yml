@@ -2,7 +2,7 @@ name: Docker Build
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop, 'claude/**' ]
     paths:
       - 'Docker/**'
       - 'requirements3.txt'
