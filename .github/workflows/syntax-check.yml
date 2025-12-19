@@ -87,41 +87,41 @@ jobs:
     - name: Validate imports
       run: |
         echo "Checking for problematic imports..."
-        python -c "
-import os
-import sys
-import importlib.util
+        python3 <<'PYTHON_SCRIPT' || echo "Import validation skipped - install dependencies first"
+        import os
+        import sys
+        import importlib.util
 
-errors = []
-warnings = []
+        errors = []
+        warnings = []
 
-# List of modules to check (add more as needed)
-core_modules = [
-    'laikaboss.objectmodel',
-    'laikaboss.constants',
-    # Add more after critical fixes
-]
+        # List of modules to check (add more as needed)
+        core_modules = [
+            'laikaboss.objectmodel',
+            'laikaboss.constants',
+            # Add more after critical fixes
+        ]
 
-for module_name in core_modules:
-    try:
-        spec = importlib.util.find_spec(module_name)
-        if spec is None:
-            warnings.append(f'Module {module_name} not found')
+        for module_name in core_modules:
+            try:
+                spec = importlib.util.find_spec(module_name)
+                if spec is None:
+                    warnings.append(f'Module {module_name} not found')
+                else:
+                    print(f'✓ {module_name} can be located')
+            except Exception as e:
+                errors.append(f'Error checking {module_name}: {str(e)}')
+
+        if warnings:
+            print('\n⚠️  Warnings:')
+            for w in warnings:
+                print(f'  - {w}')
+
+        if errors:
+            print('\n❌ Errors:')
+            for e in errors:
+                print(f'  - {e}')
+            sys.exit(1)
         else:
-            print(f'✓ {module_name} can be located')
-    except Exception as e:
-        errors.append(f'Error checking {module_name}: {str(e)}')
-
-if warnings:
-    print('\n⚠️  Warnings:')
-    for w in warnings:
-        print(f'  - {w}')
-
-if errors:
-    print('\n❌ Errors:')
-    for e in errors:
-        print(f'  - {e}')
-    sys.exit(1)
-else:
-    print('\n✅ Import validation passed')
-" || echo "Import validation skipped - install dependencies first"
+            print('\n✅ Import validation passed')
+        PYTHON_SCRIPT
