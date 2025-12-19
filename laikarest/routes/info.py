@@ -26,6 +26,7 @@ from flask import Response
 
 from laikaboss.postgres_adapter import postgres
 from laikarest.authentication.decorators import enforce_auth
+from laikarest.error import AuthMethodNotInUse, AuthAttemptedButFailed
 
 def info_routes(app, config, storage_gui_config, laika_auth, redis_client):
     """These routes return information regarding the laikarestd instance.

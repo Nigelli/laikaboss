@@ -24,6 +24,7 @@ from builtins import str
 import sys
 import os
 import argparse
+import hashlib
 import logging
 import json
 import uuid

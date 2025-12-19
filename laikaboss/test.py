@@ -339,14 +339,14 @@ def grade_scan(stored_test, current_test, verbose=False, custom_diff=None):
         # to crete the  test
 
         (result_diff, errors_diff, runtime_ratio) = diff_tests(stored_test, current_test, ignore_pattern, custom_diff)
-        
+
         if 'error_validation' in stored_test:
             if stored_test['error_validation'] > 0:
                 if stored_test['error_validation'] == 1:
                     if len(stored_test['errors']) != len(current_test['errors']):
                         test_passed = False
                 if stored_test['error_validation'] == 2:
-                    if error_diff:
+                    if errors_diff:
                         test_passed = False
         
         if 'runtime_validation' in stored_test:

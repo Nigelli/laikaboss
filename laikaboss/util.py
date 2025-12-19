@@ -47,12 +47,20 @@ log_delimiter="|"
 log_delimiter_replacement="_"
 processID = os.getpid()
 
+# Initialize logging globals (set by init_logging())
+logIdentity = None
+logFacility = None
+moduleLogLevel = None
+scanLogLevel = None
+logResultFromSource = None
+
 def init_logging():
-    globals()['logFacility'] = getattr(syslog, config.logfacility)
-    globals()['logIdentity'] = config.logidentity
-    globals()['moduleLogLevel'] = getattr(syslog, config.moduleloglevel)
-    globals()['scanLogLevel'] = getattr(syslog, config.scanloglevel)
-    globals()['logResultFromSource'] = config.logresultfromsource
+    global logIdentity, logFacility, moduleLogLevel, scanLogLevel, logResultFromSource
+    logFacility = getattr(syslog, config.logfacility)
+    logIdentity = config.logidentity
+    moduleLogLevel = getattr(syslog, config.moduleloglevel)
+    scanLogLevel = getattr(syslog, config.scanloglevel)
+    logResultFromSource = config.logresultfromsource
     syslog.openlog(str(logIdentity), 0, logFacility)
 
 # Keeping this here for legacy purposes. It's now deprecated.

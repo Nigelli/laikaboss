@@ -17,6 +17,7 @@
 # Module to collect scan information
 #
 
+import json
 import time
 import logging
 

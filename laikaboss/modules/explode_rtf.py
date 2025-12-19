@@ -18,6 +18,7 @@
 # Requires: oletools (https://github.com/decalage2/oletools)
 # Sandia National Labs
 from __future__ import division
+import logging
 from laikaboss.si_module import SI_MODULE
 from laikaboss.objectmodel import ModuleObject, ExternalVars
 from oletools import rtfobj

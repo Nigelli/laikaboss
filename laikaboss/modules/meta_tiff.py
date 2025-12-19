@@ -200,7 +200,7 @@ class META_TIFF(laikaboss.si_module.SI_MODULE):
 
                 # base on the mime send it to other process.
                 if byte_data and len(byte_data.strip("\x00")) > 0:
-                    children.append(byte_daa)
+                    children.append(byte_data)
             strip_counter += 1
 
         return children

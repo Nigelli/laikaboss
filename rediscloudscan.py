@@ -19,6 +19,7 @@ from __future__ import print_function
 from laikaboss.objectmodel import ExternalObject, ExternalVars
 from laikaboss.redisClientLib import Client, getJSON
 from laikaboss.constants import level_metadata
+import logging
 import sys
 from optparse import OptionParser
 from random import randint
@@ -98,7 +99,7 @@ def main():
 
   redis_url = getConfig('redis_url')
   redis_work_queue = getConfig('redis_work_queue')
-  source = getSource('source')
+  source = getConfig('source')
 
   try:
     file_buffer = ''
@@ -114,10 +115,10 @@ def main():
   fname = file_list[0]
   client = Client(url=redis_url, work_queue=redis_work_queue)
 
-  if obj.file_format == 'submit':
+  if options.file_format == 'submit':
 
       submitID = None
-      fname = file_path.split("/")[-1]
+      fname = fname.split("/")[-1]
       try:
          submitID = fname[fname.rfind("-") + 1 : fname.rfind(".")]
       except:
@@ -126,7 +127,7 @@ def main():
       try:
          externalObject = ExternalObject.decode(file_buffer)
       except Exception as e:
-         logging.exception("Error decoding file: " + fname + ' submitID=' + submitID + ' copying file to exception directory as ' + str(error_path))
+         logging.exception("Error decoding file: " + fname + ' submitID=' + str(submitID))
          raise e
 
       if not externalObject.externalVars.filename:
