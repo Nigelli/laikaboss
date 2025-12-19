@@ -59,8 +59,10 @@ jobs:
           echo "⚠️  Found potential print statements (should use print() function)"
         fi
 
-        # Check for except , syntax
-        if grep -r "except.*,.*:" --include="*.py" laikaboss/ 2>/dev/null | grep -v "^[[:space:]]*#"; then
+        # Check for Python 2 except syntax (except Exception, var:)
+        # This pattern matches "except SomeException, variable:" but NOT "except (Ex1, Ex2):" or "except (Ex1, Ex2) as e:"
+        # We look for except followed by a word (not paren), then comma, then word, then colon
+        if grep -rE "except\s+[A-Za-z_][A-Za-z0-9_\.]*\s*,\s*[A-Za-z_][A-Za-z0-9_]*\s*:" --include="*.py" laikaboss/ 2>/dev/null | grep -v ":[[:space:]]*#"; then
           echo "❌ Found Python 2 except syntax (should use 'except Exception as e:')"
           exit 1
         fi
