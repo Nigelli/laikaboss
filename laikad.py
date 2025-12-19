@@ -98,7 +98,7 @@ DEFAULT_CONFIGS = {
     'brokerfrontend': 'tcp://*:5558',
     'brokerbackend': 'tcp://*:5559',
     'workerconnect': 'tcp://localhost:5559',
-    'async': 'False',
+    'async_mode': 'False',
     'gracetimeout': '30',
     'workerpolltimeout': '300',
     'log_result' : 'False',
@@ -891,9 +891,9 @@ def main():
         gracetimeout = int(get_option('gracetimeout'))
 
     if options.run_async:
-        async = True
+        async_mode = True
     else:
-        async = strtobool(get_option('async'))
+        async_mode = strtobool(get_option('async_mode'))
    
     logresult = strtobool(get_option('log_result'))
 
@@ -930,7 +930,7 @@ def main():
     # Start the broker
     broker_proc = None
     if not options.no_broker:
-        if async:
+        if async_mode:
             broker_proc = AsyncBroker(broker_backend_address, broker_frontend_address)
         else:
             broker_proc = SyncBroker(broker_backend_address, broker_frontend_address, gracetimeout)
@@ -947,7 +947,7 @@ def main():
     while KEEP_RUNNING:
         # Ensure we have a broker
         if not options.no_broker and not broker_proc.is_alive():
-            if async:
+            if async_mode:
                 broker_proc = AsyncBroker(broker_backend_address, broker_frontend_address)
             else:
                 broker_proc = SyncBroker(broker_backend_address, broker_frontend_address,

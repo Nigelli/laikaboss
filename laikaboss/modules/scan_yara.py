@@ -82,7 +82,7 @@ class SCAN_YARA(SI_MODULE):
                     return moduleResult
                 matches = yara_on_demand(sig_filepath, metaBuffer, externalVars=externalVars)
             elif maxBytes and scanObject.objectSize > maxBytes:
-                matches = yara_on_demand(sig_filepath, buffer(scanObject.buffer, 0, maxBytes), externalVars=externalVars)
+                matches = yara_on_demand(sig_filepath, scanObject.buffer[0:maxBytes], externalVars=externalVars)
             else:
                 matches = yara_on_demand(sig_filepath, scanObject.buffer, externalVars=externalVars)
         # Use the default rule set
@@ -94,7 +94,7 @@ class SCAN_YARA(SI_MODULE):
                     return moduleResult
                 matches = yara_on_demand(config.yarascanrules, metaBuffer, externalVars=externalVars)
             elif maxBytes and scanObject.objectSize > maxBytes:
-                matches = yara_on_demand(config.yarascanrules, buffer(scanObject.buffer, 0, maxBytes), externalVars=externalVars)
+                matches = yara_on_demand(config.yarascanrules, scanObject.buffer[0:maxBytes], externalVars=externalVars)
             else:
                 matches = yara_on_demand(config.yarascanrules, scanObject.buffer, externalVars=externalVars)
 

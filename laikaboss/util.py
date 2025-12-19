@@ -94,7 +94,7 @@ def yara_on_demand(rule, theBuffer, externalVars={}, maxBytes=0):
             else:
                 yara_on_demand_rules[rule] = yara.load(rule)
         if maxBytes and len(theBuffer) > maxBytes:
-            matches = yara_on_demand_rules[rule].match(data=buffer(theBuffer, 0, maxBytes) or 'EMPTY', externals=externalVars)
+            matches = yara_on_demand_rules[rule].match(data=theBuffer[0:maxBytes] or 'EMPTY', externals=externalVars)
         else:
             matches = yara_on_demand_rules[rule].match(data=theBuffer or 'EMPTY', externals=externalVars)
         return matches
