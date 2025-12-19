@@ -25,6 +25,7 @@ setup(
     license = "Apache 2.0",
     keywords = "malware",
     url = "https://github.com/sandialabs/laikaboss",
+    python_requires='>=3.8',
     packages = find_packages(),
 
     data_files = [ ('/etc/laikaboss', ['etc/dist/laikaboss.conf',
