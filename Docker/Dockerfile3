@@ -78,12 +78,15 @@ COPY dependencies/ /var/run/laikaboss/dependencies/
 
 COPY scripts/ /var/run/laikaboss/scripts/
 
-COPY deb-requirements-1804.txt /var/run/laikaboss/
+COPY deb-requirements-2204.txt /var/run/laikaboss/
 
 RUN  cd /var/run/laikaboss/ && \
-     /var/run/laikaboss/scripts/install-pkg-deps.sh deb-requirements-1804.txt
+     /var/run/laikaboss/scripts/install-pkg-deps.sh deb-requirements-2204.txt
 
-RUN ln -s llvm-config-10 llvm-config
+# Create llvm-config symlink if llvm-config-10 exists
+RUN if command -v llvm-config-10 >/dev/null 2>&1; then \
+      ln -sf /usr/bin/llvm-config-10 /usr/bin/llvm-config; \
+    fi
 
 # base items - and items which take a long time to build and rarely change
 COPY requirements3.txt requirements3.in /var/run/laikaboss/

@@ -11,8 +11,8 @@ cd ..
 export input_file=$1
 
 apt-get update
-apt-get --yes --force-yes upgrade cmake
-apt-get --yes --force-yes upgrade libstdc++6
+apt-get --yes upgrade cmake || true
+apt-get --yes upgrade libstdc++6 || true
 # rewrite the deps file as one long line
 export deps=`cat ${input_file} | sed ':a;N;$!ba;s/\n/ /g'`
 apt-get install -y $deps
