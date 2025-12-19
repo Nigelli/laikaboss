@@ -16,7 +16,6 @@
 #
 from __future__ import division
 from builtins import str as text
-from past.builtins import unicode
 from past.utils import old_div
 from builtins import object
 import os
@@ -272,7 +271,7 @@ def log_record_strainer(thing):
       # Don't output empty strings or lists
       if isinstance(new_value, (bool, int)):
         new_thing[new_key] = new_value
-      elif isinstance(new_value, (bytes, unicode)) and new_value.lower() in ['true', 'false', b'true', b'false']:
+      elif isinstance(new_value, (bytes, str)) and new_value.lower() in ['true', 'false', b'true', b'false']:
         if new_value.lower() == 'false' or new_value.lower() == b'false':
           new_thing[new_key] = False
         elif new_value.lower() == 'true' or new_value.lower() == b'true':
@@ -295,7 +294,7 @@ def log_record_strainer(thing):
       new_list.append(log_record_strainer(i))
     return tuple(new_list)
   elif thing_type is UUID:
-    return unicode(thing)
+    return str(thing)
   # JSON does not fully support NaN and Infinity in its spec, so some JSON libraries do not
   # handle these values and instead raise an error. Serializing these to the string
   # respresentation to prevent these errors from disrupting logging.
@@ -307,9 +306,9 @@ def log_record_strainer(thing):
     else:
       return thing
   elif thing_type is bytes:
-    return unicode(thing, 'utf-8', errors='replace')
-  elif thing_type is text or thing_type is unicode:
-    return unicode(thing)
+    return str(thing, 'utf-8', errors='replace')
+  elif thing_type is text or thing_type is str:
+    return str(thing)
   else:
     return thing
 

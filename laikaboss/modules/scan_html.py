@@ -24,7 +24,6 @@ This module handles HTML.
 from future import standard_library
 standard_library.install_aliases()
 from builtins import str
-from past.builtins import unicode
 import logging
 import struct
 import re
@@ -222,8 +221,8 @@ class SCAN_HTML(SI_MODULE):
         data_num = 0
         for content in data_objects:
             is_base64 = False
-            if isinstance(content, unicode):
-                content = unicode(content).encode('utf-8', 'replace')
+            if isinstance(content, str):
+                content = content.encode('utf-8', 'replace')
             data_num += 1
             middle_idx = content.find(b",")
             media_types = content[5:middle_idx].split(b';') #Cut off beginning "data:" tag

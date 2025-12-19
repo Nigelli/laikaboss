@@ -26,7 +26,6 @@ and splits FAT files into separate Mach-O files for further processing.
 # Python library imports
 import os
 import logging
-from past.builtins import unicode
 
 # 3rd-party Python libraries
 try:
@@ -65,8 +64,8 @@ class EXPLODE_MACHO(laikaboss.si_module.SI_MODULE):
             return result
 
         for f in parser.sub_files:
-            if isinstance(f, unicode):
-                f = unicode(f).encode('utf-8', 'replace')
+            if isinstance(f, str):
+                f = f.encode('utf-8', 'replace')
             result.append(laikaboss.objectmodel.ModuleObject(buffer=f, 
                 externalVars=laikaboss.objectmodel.ExternalVars(filename="fat_macho", contentType="macho")))
 

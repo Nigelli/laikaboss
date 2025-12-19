@@ -9,8 +9,6 @@ from __future__ import absolute_import
 
 from builtins import next
 from builtins import str
-from past.builtins import basestring
-from past.builtins import unicode
 from future import standard_library
 standard_library.install_aliases()
 
@@ -273,7 +271,7 @@ class SUBMIT_STORAGE_S3(SI_MODULE):
                         buf = text_file.buffer
                         if buf and len(buf) > _min_text_size:
                             if text:
-                                text = text + b"\n=====" + unicode(text_file.filename).encode('utf-8') + b"=====\n"
+                                text = text + b"\n=====" + str(text_file.filename).encode('utf-8') + b"=====\n"
                             text = text + buf
 
                 if text:
