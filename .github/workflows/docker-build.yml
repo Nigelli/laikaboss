@@ -47,8 +47,8 @@ jobs:
 
     - name: Check if Dockerfile exists
       run: |
-        if [ -f "Docker/Dockerfile" ]; then
-          echo "Found Docker/Dockerfile"
+        if [ -f "Docker/Dockerfile3" ]; then
+          echo "Found Docker/Dockerfile3"
         elif [ -f "Dockerfile" ]; then
           echo "Found Dockerfile in root"
         else
@@ -60,7 +60,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: Docker/Dockerfile
+        file: Docker/Dockerfile3
         push: false
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
@@ -72,7 +72,7 @@ jobs:
     - name: Test Docker image
       run: |
         # Build image for testing
-        docker build -t laikaboss:test -f Docker/Dockerfile . || echo "Docker build needs updates"
+        docker build -t laikaboss:test -f Docker/Dockerfile3 . || echo "Docker build needs updates"
 
         # Test if image can run (if build succeeded)
         # docker run --rm laikaboss:test --version || echo "Docker test skipped"
@@ -82,7 +82,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: Docker/Dockerfile
+        file: Docker/Dockerfile3
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
