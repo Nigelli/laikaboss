@@ -14,8 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# 
-from past.builtins import unicode
+#
 import logging
 
 from laikaboss.si_module import SI_MODULE
@@ -134,8 +133,6 @@ class SCAN_YARA(SI_MODULE):
         newValue = 'None'
         if isinstance(value,str):
              newValue = value or 'None'
-        elif isinstance(value,unicode):
-            newValue = value.encode('utf8') or 'None'
         elif isinstance(value,(int,bool)):
             newValue = value
         elif type(value) is list:

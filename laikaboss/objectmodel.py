@@ -18,7 +18,6 @@
 #  Set up classes
 from builtins import bytes
 from builtins import str
-from past.builtins import basestring
 from builtins import object
 from builtins import int
 from laikaboss.constants import level_minimal, level_metadata

@@ -17,7 +17,6 @@
 # 
 from future import standard_library
 standard_library.install_aliases()
-from past.builtins import basestring, unicode
 from builtins import object
 import yara
 import random
@@ -223,10 +222,10 @@ def clean_field(field, last=False):
     Returns:
     A string ready for use in a log entry
     '''
-    # Force field to native unicode type
-    if isinstance(field, unicode):
-        field = unicode(field)
-    if not isinstance(field, (basestring, list)):
+    # Force field to str type
+    if isinstance(field, str):
+        field = str(field)
+    if not isinstance(field, (str, list)):
         field = str(field)
     elif isinstance(field, list):
         field = listToSSV(set(field))
@@ -758,7 +757,7 @@ def toBool(v, default = None):
        if isinstance(v, bool):
           return v
 
-       if isinstance(v, basestring):
+       if isinstance(v, str):
            v = v.lower().strip()
            if v in ['yes', 'true', 'on', 'enabled', '1']:
               return True
