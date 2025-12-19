@@ -49,9 +49,9 @@ RUN apt-get update && \
   sudo \
   dumb-init \
   apt-utils \
-  libpython3.6-dev \
+  libpython3.10-dev \
   python3-pip \
-  libssl1.0-dev
+  libssl-dev
 
 # For installing a newer version of node and npm than what Ubuntu defaults to.
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
@@ -136,11 +136,11 @@ RUN cd /home/laikaboss/laikaboss/frontend && \
     rm -rf /home/laikaboss/laikaboss/frontend/node_modules && \
     npm i && \
     npm run build && \
-    mkdir -p /opt/venvs/laikaboss/lib/python3.8/site-packages/libtiff && \
+    mkdir -p /opt/venvs/laikaboss/lib/python3.10/site-packages/libtiff && \
     mkdir -p /var/www/html/webui-export && \
     mkdir -p /var/www/html/webui && \
     npm run copy && \
-    chown -R laikaboss:laikaboss /opt/venvs/laikaboss/lib/python3.8/site-packages/libtiff && \
+    chown -R laikaboss:laikaboss /opt/venvs/laikaboss/lib/python3.10/site-packages/libtiff && \
     chown -R laikaboss:laikaboss /var/www/html/webui-export && \
     chown -R laikaboss:laikaboss /var/www/html/webui
 
@@ -152,9 +152,9 @@ RUN cd /home/laikaboss/laikaboss/code && \
   cp /home/laikaboss/laikaboss/code/laika_version /opt/venvs/laikaboss/laika_version
 
 RUN cd /home/laikaboss/ && \
-    mkdir -p /opt/venvs/laikaboss/lib/python3.6/site-packages/tools && \
-    chown -R laikaboss /opt/venvs/laikaboss/lib/python3.6/site-packages/libtiff/ && \
-    chown laikaboss /opt/venvs/laikaboss/lib/python3.6/site-packages/ && \
+    mkdir -p /opt/venvs/laikaboss/lib/python3.10/site-packages/tools && \
+    chown -R laikaboss /opt/venvs/laikaboss/lib/python3.10/site-packages/libtiff/ && \
+    chown laikaboss /opt/venvs/laikaboss/lib/python3.10/site-packages/ && \
     python3 -m pip freeze > /opt/venvs/laikaboss/laika_pip_freeze && \
     apt list --installed > /opt/venvs/laikaboss/laika_os_pkgs && \
     apt-get install -y locales; locale-gen;  localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
