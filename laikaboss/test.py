@@ -81,8 +81,8 @@ null_config = {
 
 LBTEST_EXTENSION = "lbtest"
 IGNORE_PATTERN = []
-IGNORE_PATTERN.append('^\."scan_result"\[[0-9]+\]\.("uuid"|"rootUID"|"scanTime"|"parent"|"submitID")')
-IGNORE_PATTERN.append('^\."scan_result"\[[0-9]+\]\."moduleMetadata"."EXTERNAL"."laikaboss_ext".*')
+IGNORE_PATTERN.append(r'^\."scan_result"\[[0-9]+\]\.("uuid"|"rootUID"|"scanTime"|"parent"|"submitID")')
+IGNORE_PATTERN.append(r'^\."scan_result"\[[0-9]+\]\."moduleMetadata"."EXTERNAL"."laikaboss_ext".*')
 
 ERROR_VALIDATION = 1
 RUNTIME_VALIDATION = 0.0
