@@ -144,12 +144,14 @@ RUN cd /home/laikaboss/laikaboss/frontend && \
     chown -R laikaboss:laikaboss /var/www/html/webui-export && \
     chown -R laikaboss:laikaboss /var/www/html/webui
 
-COPY code/ /home/laikaboss/laikaboss/code/
+# Copy setup.py and laikaboss package for installation
+COPY setup.py /home/laikaboss/laikaboss/code/
+COPY laikaboss/ /home/laikaboss/laikaboss/code/laikaboss/
+COPY etc/ /home/laikaboss/laikaboss/code/etc/
 
 RUN cd /home/laikaboss/laikaboss/code && \
   python3 setup.py build && \
-  python3 setup.py install --user --prefix= && \
-  cp /home/laikaboss/laikaboss/code/laika_version /opt/venvs/laikaboss/laika_version
+  python3 setup.py install --user --prefix=
 
 RUN cd /home/laikaboss/ && \
     mkdir -p /opt/venvs/laikaboss/lib/python3.10/site-packages/tools && \
@@ -200,7 +202,7 @@ RUN touch /etc/laikaboss/laika_cluster.conf \
   /etc/laikaboss/secrets/s3_secret_key \
   /etc/laikaboss/secrets/s3_creds
 
-COPY entrypoint.sh /opt/venvs/laikaboss/scripts/
+COPY Docker/entrypoint.sh /opt/venvs/laikaboss/scripts/
 RUN chmod 755 /opt/venvs/laikaboss/scripts/entrypoint.sh
 
 USER laikaboss
