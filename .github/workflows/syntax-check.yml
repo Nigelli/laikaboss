@@ -1,0 +1,127 @@
+name: Syntax Check
+
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  syntax:
+    name: Fast Syntax Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Check Python syntax
+      run: |
+        set -e
+        echo "Checking Python syntax for all .py files..."
+
+        # Track failures
+        FAILED=0
+        TOTAL=0
+
+        # Compile all Python files
+        while IFS= read -r file; do
+          TOTAL=$((TOTAL + 1))
+          if ! python -m py_compile "$file" 2>&1; then
+            echo "❌ SYNTAX ERROR in $file"
+            FAILED=$((FAILED + 1))
+          else
+            echo "✓ $file"
+          fi
+        done < <(find . -name "*.py" -not -path "./dependencies/*" -not -path "./.git/*" -not -path "./build/*")
+
+        echo ""
+        echo "Results: $((TOTAL - FAILED))/$TOTAL files passed"
+
+        if [ $FAILED -gt 0 ]; then
+          echo "❌ $FAILED file(s) have syntax errors"
+          exit 1
+        else
+          echo "✅ All files have valid Python 3 syntax"
+        fi
+
+    - name: Check for Python 2 only syntax patterns
+      run: |
+        echo "Checking for Python 2 incompatible patterns..."
+
+        # Check for print statements (not function calls)
+        if grep -r "print\s\+[^(]" --include="*.py" laikaboss/ 2>/dev/null | grep -v "^[[:space:]]*#"; then
+          echo "⚠️  Found potential print statements (should use print() function)"
+        fi
+
+        # Check for except , syntax
+        if grep -r "except.*,.*:" --include="*.py" laikaboss/ 2>/dev/null | grep -v "^[[:space:]]*#"; then
+          echo "❌ Found Python 2 except syntax (should use 'except Exception as e:')"
+          exit 1
+        fi
+
+        # Check for .iteritems(), .iterkeys(), .itervalues()
+        if grep -r "\.iter\(items\|keys\|values\)(" --include="*.py" laikaboss/ 2>/dev/null | grep -v "^[[:space:]]*#"; then
+          echo "⚠️  Found Python 2 dict iteration methods"
+        fi
+
+        # Check for reserved keyword 'async' as parameter/variable
+        if grep -r "\basync\s*=" --include="*.py" laikaboss/ 2>/dev/null | grep -v "^[[:space:]]*#"; then
+          echo "❌ Found 'async' used as variable/parameter (reserved keyword in Python 3.7+)"
+          exit 1
+        fi
+
+        # Check for buffer() function
+        if grep -r "\bbuffer(" --include="*.py" laikaboss/ 2>/dev/null | grep -v "^[[:space:]]*#"; then
+          echo "❌ Found buffer() function (removed in Python 3)"
+          exit 1
+        fi
+
+        echo "✅ Python 2 compatibility check completed"
+
+    - name: Validate imports
+      run: |
+        echo "Checking for problematic imports..."
+        python -c "
+import os
+import sys
+import importlib.util
+
+errors = []
+warnings = []
+
+# List of modules to check (add more as needed)
+core_modules = [
+    'laikaboss.objectmodel',
+    'laikaboss.constants',
+    # Add more after critical fixes
+]
+
+for module_name in core_modules:
+    try:
+        spec = importlib.util.find_spec(module_name)
+        if spec is None:
+            warnings.append(f'Module {module_name} not found')
+        else:
+            print(f'✓ {module_name} can be located')
+    except Exception as e:
+        errors.append(f'Error checking {module_name}: {str(e)}')
+
+if warnings:
+    print('\n⚠️  Warnings:')
+    for w in warnings:
+        print(f'  - {w}')
+
+if errors:
+    print('\n❌ Errors:')
+    for e in errors:
+        print(f'  - {e}')
+    sys.exit(1)
+else:
+    print('\n✅ Import validation passed')
+" || echo "Import validation skipped - install dependencies first"

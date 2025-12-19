@@ -1,0 +1,122 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install quality tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort bandit mypy pylint safety
+
+    - name: Run flake8
+      run: |
+        echo "Running flake8..."
+        flake8 laikaboss/ \
+          --exclude=dependencies/ \
+          --max-line-length=120 \
+          --extend-ignore=E203,W503 \
+          --count \
+          --statistics \
+          --output-file=flake8-report.txt || true
+        cat flake8-report.txt
+
+    - name: Check code formatting with black
+      run: |
+        echo "Checking black formatting..."
+        black --check --diff laikaboss/ \
+          --exclude=dependencies/ \
+          --line-length=120 > black-report.txt 2>&1 || true
+        cat black-report.txt
+
+    - name: Check import sorting with isort
+      run: |
+        echo "Checking import sorting..."
+        isort --check-only --diff laikaboss/ \
+          --skip dependencies \
+          --line-length=120 > isort-report.txt 2>&1 || true
+        cat isort-report.txt
+
+    - name: Run security checks with bandit
+      run: |
+        echo "Running bandit security scan..."
+        bandit -r laikaboss/ \
+          --exclude ./laikaboss/dependencies/ \
+          -f txt -o bandit-report.txt \
+          -ll || true
+        cat bandit-report.txt
+
+    - name: Check dependencies for vulnerabilities
+      run: |
+        echo "Checking for vulnerable dependencies..."
+        # Check if requirements file exists
+        if [ -f "requirements3.txt" ]; then
+          safety check --file requirements3.txt --json > safety-report.json 2>&1 || true
+          cat safety-report.json
+        fi
+
+    - name: Run type checking with mypy (optional)
+      continue-on-error: true
+      run: |
+        echo "Running mypy type checking..."
+        mypy laikaboss/ \
+          --ignore-missing-imports \
+          --no-strict-optional \
+          --allow-untyped-defs > mypy-report.txt 2>&1 || true
+        cat mypy-report.txt
+
+    - name: Generate quality summary
+      if: always()
+      run: |
+        echo "## Code Quality Summary" > quality-summary.md
+        echo "" >> quality-summary.md
+
+        echo "### Flake8 Results" >> quality-summary.md
+        echo '```' >> quality-summary.md
+        tail -20 flake8-report.txt >> quality-summary.md || echo "No flake8 report" >> quality-summary.md
+        echo '```' >> quality-summary.md
+        echo "" >> quality-summary.md
+
+        echo "### Black Formatting" >> quality-summary.md
+        echo '```' >> quality-summary.md
+        tail -20 black-report.txt >> quality-summary.md || echo "No black report" >> quality-summary.md
+        echo '```' >> quality-summary.md
+        echo "" >> quality-summary.md
+
+        echo "### Bandit Security" >> quality-summary.md
+        echo '```' >> quality-summary.md
+        tail -30 bandit-report.txt >> quality-summary.md || echo "No bandit report" >> quality-summary.md
+        echo '```' >> quality-summary.md
+
+        cat quality-summary.md
+
+    - name: Upload quality reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-quality-reports
+        path: |
+          flake8-report.txt
+          black-report.txt
+          isort-report.txt
+          bandit-report.txt
+          safety-report.json
+          mypy-report.txt
+          quality-summary.md
+        retention-days: 30

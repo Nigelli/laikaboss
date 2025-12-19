@@ -1,0 +1,140 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "laikaboss"
+authors = [
+    {name = "Lockheed Martin Corporation"},
+    {name = "Sandia National Laboratories"},
+]
+description = "File-centric intrusion detection system - Sandia National Laboratories Branch"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["malware", "security", "analysis", "intrusion-detection"]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Security",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/sandialabs/laikaboss"
+Documentation = "https://github.com/sandialabs/laikaboss/blob/main/README.md"
+Repository = "https://github.com/sandialabs/laikaboss"
+Issues = "https://github.com/sandialabs/laikaboss/issues"
+
+[tool.setuptools_scm]
+write_to = "laikaboss/_version.py"
+
+[tool.black]
+line-length = 120
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | dependencies
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
+skip = ["dependencies", "build", "dist"]
+known_first_party = ["laikaboss"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "dependencies",
+    ".eggs",
+    "*.egg",
+]
+per-file-ignores = [
+    "__init__.py:F401",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "dependencies/",
+    "build/",
+    "dist/",
+]
+
+[tool.pylint.messages_control]
+max-line-length = 120
+disable = [
+    "C0111",  # missing-docstring
+    "C0103",  # invalid-name
+    "R0913",  # too-many-arguments
+    "R0914",  # too-many-locals
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v -l --color=yes --strict-markers"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow running tests",
+    "requires_redis: Tests that require Redis",
+    "requires_s3: Tests that require S3/MinIO",
+    "requires_network: Tests that require network access",
+    "module: Tests for specific scan modules",
+]
+
+[tool.coverage.run]
+source = ["laikaboss"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/dependencies/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@abstract",
+]
