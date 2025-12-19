@@ -59,9 +59,8 @@ jobs:
           echo "⚠️  Found potential print statements (should use print() function)"
         fi
 
-        # Check for except , syntax (Python 2 style: "except Exception, e:")
-        # This pattern matches "except SomeException, variable:" but not "except (Ex1, Ex2):"
-        if grep -r "except\s\+[A-Za-z_][A-Za-z0-9_\.]*\s*,\s*[A-Za-z_]" --include="*.py" laikaboss/ 2>/dev/null | grep -v ":[[:space:]]*#"; then
+        # Check for except , syntax
+        if grep -r "except.*,.*:" --include="*.py" laikaboss/ 2>/dev/null | grep -v "^[[:space:]]*#"; then
           echo "❌ Found Python 2 except syntax (should use 'except Exception as e:')"
           exit 1
         fi
