@@ -25,7 +25,6 @@ Requires: oletools 0.52 or higher
 
 Sandia National Labs
 """
-from builtins import str
 import logging
 import sys
 from io import BytesIO

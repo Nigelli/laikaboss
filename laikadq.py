@@ -24,13 +24,7 @@ Command line program for running the broker and worker processes for the Laika
 framework. This program becomes the supervisor process that ensures the broker
 and worker processes remain up and alive (replaces those that go missing).
 '''
-from __future__ import division
-from __future__ import print_function
 
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from past.utils import old_div
 from laikaboss.lbconfigparser import LBConfigParser
 import functools
 from interruptingcow import timeout
@@ -261,7 +255,7 @@ class RedisWorker(Process):
                   counter += 1
                   should_quit = (
                       counter >= self.max_scan_items or
-                      (old_div((time.time() - start_time),60)) >= self.ttl or
+                      ((time.time() - start_time) // 60) >= self.ttl or
                       not self.keep_running)
 
                   logger.debug("[+] RedisWorker %s rpush starting to reply queue: %s: result:%s" % (self.identity, msg.senderID, str(result)))

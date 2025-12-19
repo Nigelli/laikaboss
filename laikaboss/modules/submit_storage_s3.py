@@ -5,12 +5,7 @@
 '''
 This module logs to a file in a laikastorage friendly format and/or to a socket on a laikastorage forwarder.
 '''
-from __future__ import absolute_import
 
-from builtins import next
-from builtins import str
-from future import standard_library
-standard_library.install_aliases()
 
 import copy
 from copy import deepcopy as clone_object

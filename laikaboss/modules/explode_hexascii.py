@@ -20,10 +20,8 @@
 This module looks for hex that may be encoded ASCII characters and decodes them as a new object.
 Takes args: min_size, max_size
 """
-from __future__ import division
 
 # Python library imports
-from builtins import bytes
 import logging
 import struct
 import binascii

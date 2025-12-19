@@ -15,8 +15,6 @@
 # upstream project: https://github.com/jshlbrd/laikaboss-modules
 #
 
-from future import standard_library
-standard_library.install_aliases()
 from laikaboss.si_module import SI_MODULE
 from laikaboss.objectmodel import ModuleObject, ExternalVars, ScanError
 from laikaboss.util import get_option

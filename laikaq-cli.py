@@ -16,8 +16,6 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from builtins import str
 from laikaboss.redisClientLib import Client
 from optparse import OptionParser
 from laikaboss.lbconfigparser import LBConfigParser

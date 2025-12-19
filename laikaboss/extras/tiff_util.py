@@ -19,7 +19,6 @@ This is a helper class for parsing TIFF files,
 It requires the libtiff5-dev Ubuntu package and the libtiff and numpy pip packages.
 These packages are checked in the meta_tiff.py module before this class is called.
 """
-from __future__ import print_function
 
 # Python imports
 import libtiff

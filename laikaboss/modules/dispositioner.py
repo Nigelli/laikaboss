@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # 
-from builtins import str
 from laikaboss.objectmodel import ModuleObject
 from laikaboss.si_module import SI_MODULE
 from laikaboss.util import get_scanObjectUID, yara_on_demand, \

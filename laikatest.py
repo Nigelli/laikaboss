@@ -20,7 +20,6 @@
 # command line tool for creation and execution of LB module tests
 #
 
-from builtins import str
 import sys
 import os
 import argparse

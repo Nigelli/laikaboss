@@ -24,15 +24,9 @@ Command line program for running the broker and worker processes for the Laika
 framework. This program becomes the supervisor process that ensures the broker
 and worker processes remain up and alive (replaces those that go missing).
 '''
-from __future__ import division
-from __future__ import print_function
 
 # Follows the Simple Pirate Pattern for ZMQ connections
 
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from past.utils import old_div
 from laikaboss.lbconfigparser import LBConfigParser
 import pickle as pickle
 import functools
@@ -401,7 +395,7 @@ class SyncBroker(Process):
         # Begin graceful shutdown
         logging.debug("Broker: beginning graceful shutdown sequence")
         # Wait for a grace period to allow workers to finish working
-        poll_timeout = (old_div(self.shutdown_grace_timeout, 3)) * 1000 or 1
+        poll_timeout = (self.shutdown_grace_timeout // 3) * 1000 or 1
         start_time = time.time()
         while(working_workers and
             (time.time() - start_time < self.shutdown_grace_timeout)):
@@ -654,7 +648,7 @@ class Worker(Process):
                     counter += 1
                 should_quit = (
                     counter >= self.max_scan_items or
-                    (old_div((time.time() - start_time),60)) >= self.ttl or
+                    ((time.time() - start_time) // 60) >= self.ttl or
                     not self.keep_running)
 
                 # Determine next status

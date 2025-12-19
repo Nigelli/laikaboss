@@ -23,11 +23,6 @@
 #  This client is based on the ZeroMQ Lazy Pirate pattern
 #
 
-from __future__ import print_function
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import range
 from multiprocessing import Process, Queue
 import os, sys, time, logging, select
 import getpass

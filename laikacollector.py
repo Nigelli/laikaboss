@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from __future__ import division
 from laikaboss.objectmodel import ExternalObject, ExternalVars
 from laikaboss.redisClientLib import Client, parse_local_queue_info
 import os, logging

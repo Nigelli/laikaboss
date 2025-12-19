@@ -21,8 +21,6 @@
 # Client Library for laikaboss framework.
 #
 ########################################
-from __future__ import print_function
-from builtins import object
 import os, sys
 import zlib, pickle as pickle
 import logging

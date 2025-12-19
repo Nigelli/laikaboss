@@ -17,8 +17,6 @@
 #
 # library for creating and execting test cases
 #
-from __future__ import division
-from builtins import str, range
 import sys
 import os
 import logging

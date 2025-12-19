@@ -1,4 +1,3 @@
-from __future__ import print_function
 from gevent import monkey
 monkey.patch_all()
 
@@ -18,7 +17,6 @@ import time
 import pathlib
 import socket
 
-from builtins import str as text
 from slimta.edge.smtp import SmtpEdge
 from slimta.queue import Queue
 from slimta.policy.headers import *

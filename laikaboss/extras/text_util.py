@@ -18,7 +18,6 @@
 File for text manipulation utilities
 """
 
-from builtins import str
 import random
 import string
 import hashlib

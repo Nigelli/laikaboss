@@ -22,7 +22,6 @@ Requires: tnefparse 1.2: https://pypi.python.org/pypi/tnefparse
 Sandia National Labs
 """
 
-from builtins import str
 import logging
 from struct import unpack
 from datetime import datetime

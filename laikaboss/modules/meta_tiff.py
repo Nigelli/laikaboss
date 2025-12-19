@@ -23,7 +23,6 @@ Requires: libtiff5-dev Ubuntu package
 """
 
 # Python library imports
-from builtins import str
 import os
 import io
 import tempfile

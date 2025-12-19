@@ -27,8 +27,6 @@
 #   meta_zip_derive_deflate_level: Boolean value on whether xyz tool should be used to derive
 #       the deflate level using XYZ tool.
 # Library dependencies: XYZ.py (zip tool)
-from future import standard_library
-standard_library.install_aliases()
 from laikaboss.si_module import SI_MODULE
 from laikaboss import config
 from laikaboss import xyz

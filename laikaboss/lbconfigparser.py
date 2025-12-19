@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
 import configparser
 import jinja2
 from jinja2 import meta as jinja2_meta

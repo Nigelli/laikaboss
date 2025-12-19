@@ -22,12 +22,8 @@ This is a helper class that parses Mach-O files and returns the metadata.
 # Depends on macholib
 # Macholib: https://pypi.python.org/pypi/macholib/
 """
-from __future__ import absolute_import
 
 # Python library imports
-from builtins import str
-from builtins import range
-from builtins import object
 import struct
 import os
 import os.path

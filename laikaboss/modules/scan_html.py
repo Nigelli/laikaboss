@@ -21,9 +21,6 @@ This module handles HTML.
 """
 
 # Python library imports
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
 import logging
 import struct
 import re
