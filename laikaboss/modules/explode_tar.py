@@ -17,8 +17,6 @@
 # This module decompresses tar files
 # Sandia National Labs
 
-from future import standard_library
-standard_library.install_aliases()
 from laikaboss.objectmodel import ModuleObject, ExternalVars
 from laikaboss.si_module import SI_MODULE
 from laikaboss.util import get_option

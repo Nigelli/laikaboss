@@ -17,10 +17,10 @@ Laika is an object scanner and intrusion detection system that strives to achiev
  
 
 ### Currently unsupported/known issues
- 
+
 - No inline email blocking with integrated email server
 - No Redis integration with Laikamilter/Sendmail
-- Docker image is Ubuntu 18.04 – which is python 3.6 only (which is EOL).    
+- Docker image uses Ubuntu 18.04 (Python 3.6) - **Recommended to upgrade to Ubuntu 22.04 (Python 3.10+)**
 - Buffer bloat/on disk caching at each level causes latency
 - Needs Kubernetes configuration/distribution - cluster is just deploying docker images across multiple systems
 - Needs more framework and GUI tests
@@ -201,9 +201,16 @@ The Laika framework and associated modules are released under the terms of the A
 
 ##### Quick install for cluster configuration
 ###### Prereqs
-1. Download the laikaboss source repo 
+
+**Python Requirements:**
+- **Python 3.8 or higher** (Python 3.10+ recommended)
+- Tested on Python 3.8, 3.9, 3.10, and 3.11
+- Python 3.6 is EOL and no longer supported
+
+**System Requirements:**
+1. Download the laikaboss source repo
 1. Download the latest Docker and Docker-compose, do not use the OS default
-1. install python3 package
+1. install python3 package (Python 3.8+)
 1. install pip for python3
 1. pip3 install secrets future jinja2 passlib pyOpenSSL 
 1. set up BCC from your border MTA to scan@your_laikaboss_email_server_domain

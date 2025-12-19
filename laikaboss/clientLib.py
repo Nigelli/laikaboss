@@ -21,8 +21,6 @@
 # Client Library for laikaboss framework.
 #
 ########################################
-from __future__ import print_function
-from builtins import object
 import os, sys
 import zlib, pickle as pickle
 import logging
@@ -161,7 +159,7 @@ class Client(object):
     _USE_SSH = None
     _REQUEST_TYPE = None
     
-    def __init__(self, brokerHost, context=None, useSSH=False, sshHost=None, async=False, useGevent=False, requestType=REQ_TYPE_PICKLE_ZLIB):
+    def __init__(self, brokerHost, context=None, useSSH=False, sshHost=None, async_mode=False, useGevent=False, requestType=REQ_TYPE_PICKLE_ZLIB):
 
         # Initialize Attributes
         if useGevent:
@@ -177,7 +175,7 @@ class Client(object):
         self._USE_SSH = useSSH
         self._POLL = zmq.Poller()
         self._ID = randint(1,999)
-        self._ASYNC = async
+        self._ASYNC = async_mode
         self._REQUEST_TYPE = requestType
 
         if context is not None:

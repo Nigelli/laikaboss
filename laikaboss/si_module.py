@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 # Copyright 2015 Lockheed Martin Corporation
 # Copyright 2020 National Technology & Engineering Solutions of Sandia, LLC 
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S. 
@@ -16,7 +15,6 @@ from __future__ import absolute_import
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # 
-from builtins import object
 import sys
 import traceback
 import time

@@ -18,8 +18,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from builtins import str
-from builtins import object
 import datetime
 import hashlib
 import json
@@ -125,7 +123,7 @@ class postgres(object):
 
             result = self.con.execute(i)
             if result.inserted_primary_key is None:
-                val = "Unable to write to Postgres DB: [%s]" % (e)
+                val = "Unable to write to Postgres DB: No primary key returned"
                 self.log.error(val)
             else:
                 is_success = True

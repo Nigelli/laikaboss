@@ -20,7 +20,6 @@
 '''
 extract metadata from zipfiles
 '''
-from __future__ import print_function, division
 import os
 import sys
 import zipfile
@@ -1186,7 +1185,7 @@ def parse_zip(f, decompress_files=False, derive_deflate_level=False):
         end_dir64['num_entries'], end_dir64['dir_size'], end_dir64['dir_offset']) = struct.unpack(end_dir64_stuct, end_dir64_data)
         end_dir64['create_sys'] = label_create_software(end_dir64['create_sys_raw'])
         if end_dir64['end_dir64_size'] > struct.calcsize(end_dir64_stuct):
-            end_dir64['extended'] = binascii.hexlify(f.read(end_directory['end_dir64_size'] - struct.calcsize(end_dir64_stuct)))
+            end_dir64['extended'] = binascii.hexlify(f.read(end_dir64['end_dir64_size'] - struct.calcsize(end_dir64_stuct)))
         end_dir64['end_dir64_end'] = f.tell()
         archive['end_dir64'] = end_dir64
         magic = f.read(4)

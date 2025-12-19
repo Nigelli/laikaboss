@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
 from laikaboss.lbconfigparser import LBConfigParser
 import json
 import sys

@@ -14,8 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# 
-from past.builtins import unicode
+#
 import logging
 
 from laikaboss.si_module import SI_MODULE
@@ -82,7 +81,7 @@ class SCAN_YARA(SI_MODULE):
                     return moduleResult
                 matches = yara_on_demand(sig_filepath, metaBuffer, externalVars=externalVars)
             elif maxBytes and scanObject.objectSize > maxBytes:
-                matches = yara_on_demand(sig_filepath, buffer(scanObject.buffer, 0, maxBytes), externalVars=externalVars)
+                matches = yara_on_demand(sig_filepath, scanObject.buffer[0:maxBytes], externalVars=externalVars)
             else:
                 matches = yara_on_demand(sig_filepath, scanObject.buffer, externalVars=externalVars)
         # Use the default rule set
@@ -94,7 +93,7 @@ class SCAN_YARA(SI_MODULE):
                     return moduleResult
                 matches = yara_on_demand(config.yarascanrules, metaBuffer, externalVars=externalVars)
             elif maxBytes and scanObject.objectSize > maxBytes:
-                matches = yara_on_demand(config.yarascanrules, buffer(scanObject.buffer, 0, maxBytes), externalVars=externalVars)
+                matches = yara_on_demand(config.yarascanrules, scanObject.buffer[0:maxBytes], externalVars=externalVars)
             else:
                 matches = yara_on_demand(config.yarascanrules, scanObject.buffer, externalVars=externalVars)
 
@@ -134,8 +133,6 @@ class SCAN_YARA(SI_MODULE):
         newValue = 'None'
         if isinstance(value,str):
              newValue = value or 'None'
-        elif isinstance(value,unicode):
-            newValue = value.encode('utf8') or 'None'
         elif isinstance(value,(int,bool)):
             newValue = value
         elif type(value) is list:

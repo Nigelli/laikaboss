@@ -111,10 +111,6 @@ frozenlist==1.2.0
     # via
     #   aiohttp
     #   aiosignal
-future==0.18.2
-    # via
-    #   -r requirements3.in
-    #   pefile
 geoip2==4.5.0
     # via -r requirements3.in
 file:dependencies/GetNETGUIDs.tar.gz

@@ -12,7 +12,6 @@ cffi
 chardet
 cryptography
 fluent-logger
-future
 gevent
 greenlet
 interruptingcow

@@ -16,8 +16,6 @@
 #
 # Module that uses pycdlib library to parse metadata from iso files.
 # Library dependancies: pycdlib
-from future import standard_library
-standard_library.install_aliases()
 from laikaboss.si_module import SI_MODULE
 from laikaboss import config
 import io

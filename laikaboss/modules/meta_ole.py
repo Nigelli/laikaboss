@@ -19,7 +19,6 @@ This module extracts metadata from OLE files
 
 Requires the olefile module (and oletools for clsid identification)
 '''
-from builtins import str
 from datetime import datetime
 from olefile import OleFileIO, STGTY_STREAM, STGTY_STORAGE 
 from oletools.common.clsid import KNOWN_CLSIDS

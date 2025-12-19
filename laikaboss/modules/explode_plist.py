@@ -21,7 +21,6 @@ Requires: biplist 1.0.1 (https://pypi.python.org/pypi/biplist/1.0.1)
 
 Sandia National Labs
 """
-from builtins import bytes
 import logging
 import hashlib
 import biplist

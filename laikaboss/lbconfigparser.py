@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from __future__ import absolute_import
-from past.builtins import basestring
-from future import standard_library
-standard_library.install_aliases()
 import configparser
 import jinja2
 from jinja2 import meta as jinja2_meta
@@ -71,7 +67,7 @@ class LBConfigParser(configparser.ConfigParser, object):
 
                while True:
 
-                   if "{{" in v and isinstance(v, basestring):
+                   if "{{" in v and isinstance(v, str):
 
                       ast = self.jinja_env.parse(v)
                       var_needed = jinja2_meta.find_undeclared_variables(ast)
@@ -85,7 +81,7 @@ class LBConfigParser(configparser.ConfigParser, object):
                              logging.warn("value has one or more substitutions could not be fullfilled: " + v + " missing:" + str(missing_var))
                          break
 
-                   if "{{" in v and isinstance(v, basestring):
+                   if "{{" in v and isinstance(v, str):
                        #substitutions may have substitutions - but limit recursiveness
                        if i > _max_jinja_recursion:
                           if warn:
@@ -102,7 +98,7 @@ class LBConfigParser(configparser.ConfigParser, object):
 
    def read(self, filenames, opts = None):
 
-       if isinstance(filenames, basestring):
+       if isinstance(filenames, str):
           filenames = [filenames]
 
        self.opts = opts

@@ -19,7 +19,6 @@ This module detects cryptocurrency (currently just bitcoin) addresses in text.
 
 Sandia National Labs
 '''
-from builtins import range, bytes
 from hashlib import sha256
 from binascii import unhexlify
 from laikaboss.si_module import SI_MODULE

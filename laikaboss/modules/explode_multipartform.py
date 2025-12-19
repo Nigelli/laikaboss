@@ -16,8 +16,6 @@
 #
 # Laika module to explode a multipart form data payload
 
-from future import standard_library
-standard_library.install_aliases()
 import logging
 import cgi
 import io

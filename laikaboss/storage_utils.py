@@ -18,11 +18,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
 import logging
 import socket
+import time
 import io
 from laikaboss.util import toBool
 from collections import OrderedDict

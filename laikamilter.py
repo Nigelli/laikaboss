@@ -87,13 +87,9 @@ For example, given the following json file:
 If the MTAs in group gateway are connected to this milter, then emails from from the systems in groups internala and internalb will not be scanned (but emails from other upstream servers will be). Localhost to localhost email is also exempted.
 
 '''
-from __future__ import print_function
 
 
-from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-from builtins import str as text
+import configparser
 import sys
 import traceback
 import os
@@ -245,7 +241,7 @@ class LaikaMilter(Milter.Base):
             
         except:
             log = self.uuid+" Uncaught Exception in EnvFrom"
-            self.logger.writeLog(syslog.LOG_ERR, "%s"%(text(log)))
+            self.logger.writeLog(syslog.LOG_ERR, "%s"%(str(log)))
         return Milter.CONTINUE    #ALWAYS continue to gather the entire email
         
     def envrcpt(self,to,*str):
@@ -291,7 +287,7 @@ class LaikaMilter(Milter.Base):
         
     def body(self,chunk):        # copy body to temp file
         try:
-            if isinstance(chunk, text):
+            if isinstance(chunk, str):
                 chunk = chunk.encode('utf-8')
             if (isinstance(chunk, bytes)):
                 chunk = chunk.replace(b"\r\n", b"\n")

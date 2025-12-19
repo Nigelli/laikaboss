@@ -18,11 +18,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import str
-from past.builtins import basestring
-from builtins import object
 import json
 import copy
 from collections import OrderedDict
@@ -78,7 +73,7 @@ def cleaner(v, custom_cleanup):
          for key,val in v.items():
              val = cleaner(item, custom_cleanup)
              res[key] = val
-    elif isinstance(v, basestring):
+    elif isinstance(v, str):
          res = custom_cleanup(v) 
     else: 
          res = v 

@@ -16,8 +16,6 @@
 #
 # Laika module for capturing form metadata
 
-from future import standard_library
-standard_library.install_aliases()
 import logging
 import urllib.parse
 
@@ -53,7 +51,7 @@ class META_HTTPFORMGET(SI_MODULE):
             queryString = queryString[1]
         else:
             queryString = queryString[0]
-        formFields = urlparse.parse_qs(queryString, keep_blank_values=1)
+        formFields = urllib.parse.parse_qs(queryString, keep_blank_values=1)
         for field in formFields:
             scanObject.addMetadata(self.metadata_name, field, formFields[field])
         return moduleResult

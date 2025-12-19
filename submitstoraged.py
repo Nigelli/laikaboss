@@ -22,9 +22,6 @@ Dependencies: watchdog (0.8.3) (API: http://pythonhosted.org/watchdog/api.html#m
 Sandia National Labs
 """
 
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
 from multiprocessing import Process, JoinableQueue
 from optparse import OptionParser
 from laikaboss.lbconfigparser import LBConfigParser

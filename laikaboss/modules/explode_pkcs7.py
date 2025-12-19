@@ -13,7 +13,6 @@
 # limitations under the License.
 # 
 #This modules extracts metadata from x509 certificates
-from builtins import str
 import sys, hashlib, traceback, logging
 from M2Crypto import SMIME, X509, m2, BIO
 

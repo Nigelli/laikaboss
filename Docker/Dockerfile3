@@ -27,8 +27,8 @@
 # limitations under the License.
 #
 
-#FROM ubuntu:18.04 
-FROM  ubuntu:18.04 
+#FROM ubuntu:18.04
+FROM  ubuntu:22.04 
 
 ENV NODE_EXTRA_CA_CERTS /etc/ssl/certs/ca-certificates.crt 
 ENV REQUESTS_CA_BUNDLE  /etc/ssl/certs/ca-certificates.crt

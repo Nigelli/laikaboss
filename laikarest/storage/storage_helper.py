@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from future import standard_library
-standard_library.install_aliases()
 import os
 import time
 import json
@@ -283,10 +281,12 @@ class StorageHelper:
     def _create_memorialization_bucket_if_not_exists(self):
         try:
             self.storage_operator.make_bucket(self.memorialized_bucket_name)
-        except BucketAlreadyOwnedByYou as e:
-            pass
-        except BucketAlreadyExists as e:
-            pass
+        except S3Error as e:
+            # Ignore errors if bucket already exists
+            if e.code in ('BucketAlreadyOwnedByYou', 'BucketAlreadyExists'):
+                pass
+            else:
+                raise
         except Exception as e:
             logging.exception(e)
 

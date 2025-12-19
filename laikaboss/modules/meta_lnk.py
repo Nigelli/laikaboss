@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from __future__ import division
-from future import standard_library
-standard_library.install_aliases()
-from builtins import range
 import io
 import logging
 try:

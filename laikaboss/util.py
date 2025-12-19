@@ -15,10 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # 
-from future import standard_library
-standard_library.install_aliases()
-from past.builtins import basestring, unicode
-from builtins import object
 import yara
 import random
 import string
@@ -48,12 +44,20 @@ log_delimiter="|"
 log_delimiter_replacement="_"
 processID = os.getpid()
 
+# Initialize logging globals (set by init_logging())
+logIdentity = None
+logFacility = None
+moduleLogLevel = None
+scanLogLevel = None
+logResultFromSource = None
+
 def init_logging():
-    globals()['logFacility'] = getattr(syslog, config.logfacility)
-    globals()['logIdentity'] = config.logidentity
-    globals()['moduleLogLevel'] = getattr(syslog, config.moduleloglevel)
-    globals()['scanLogLevel'] = getattr(syslog, config.scanloglevel)
-    globals()['logResultFromSource'] = config.logresultfromsource
+    global logIdentity, logFacility, moduleLogLevel, scanLogLevel, logResultFromSource
+    logFacility = getattr(syslog, config.logfacility)
+    logIdentity = config.logidentity
+    moduleLogLevel = getattr(syslog, config.moduleloglevel)
+    scanLogLevel = getattr(syslog, config.scanloglevel)
+    logResultFromSource = config.logresultfromsource
     syslog.openlog(str(logIdentity), 0, logFacility)
 
 # Keeping this here for legacy purposes. It's now deprecated.
@@ -94,7 +98,7 @@ def yara_on_demand(rule, theBuffer, externalVars={}, maxBytes=0):
             else:
                 yara_on_demand_rules[rule] = yara.load(rule)
         if maxBytes and len(theBuffer) > maxBytes:
-            matches = yara_on_demand_rules[rule].match(data=buffer(theBuffer, 0, maxBytes) or 'EMPTY', externals=externalVars)
+            matches = yara_on_demand_rules[rule].match(data=theBuffer[0:maxBytes] or 'EMPTY', externals=externalVars)
         else:
             matches = yara_on_demand_rules[rule].match(data=theBuffer or 'EMPTY', externals=externalVars)
         return matches
@@ -223,10 +227,10 @@ def clean_field(field, last=False):
     Returns:
     A string ready for use in a log entry
     '''
-    # Force field to native unicode type
-    if isinstance(field, unicode):
-        field = unicode(field)
-    if not isinstance(field, (basestring, list)):
+    # Force field to str type
+    if isinstance(field, str):
+        field = str(field)
+    if not isinstance(field, (str, list)):
         field = str(field)
     elif isinstance(field, list):
         field = listToSSV(set(field))
@@ -758,7 +762,7 @@ def toBool(v, default = None):
        if isinstance(v, bool):
           return v
 
-       if isinstance(v, basestring):
+       if isinstance(v, str):
            v = v.lower().strip()
            if v in ['yes', 'true', 'on', 'enabled', '1']:
               return True
