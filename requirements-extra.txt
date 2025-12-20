@@ -1,1 +1,1 @@
-libtiff==0.4.2
+pylibtiff==0.6.1

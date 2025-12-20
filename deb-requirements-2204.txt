@@ -36,7 +36,7 @@ libzbar0
 libsnappy-dev
 unixodbc-dev
 python3-dbg
-llvm-10
-clang-10
+llvm-14
+clang-14
 perl
 openjdk-11-jdk-headless

@@ -39,7 +39,9 @@ RUN apt-get update && \
   apt-get -qq update && apt-get install -y \
   automake \
   build-essential \
+  curl \
   git \
+  gnupg \
   jq \
   libtool \
   make \
@@ -54,13 +56,15 @@ RUN apt-get update && \
   libssl-dev
 
 # For installing a newer version of node and npm than what Ubuntu defaults to.
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+# NodeSource deprecated setup_*.x scripts, using new method
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
 RUN apt-get update
 
 RUN apt-get install -y \
-  nodejs \
-  node-gyp 
+  nodejs 
 
 # Add laikaboss user
 RUN groupadd -r laikaboss -g 21043 && \
@@ -71,8 +75,8 @@ RUN groupadd -r laikaboss -g 21043 && \
 ENV PYTHONUSERBASE /opt/venvs/laikaboss
 ENV PATH="/opt/venvs/laikaboss/bin:${PATH}"
 
-# Update setuptools
-RUN pip3 install setuptools --upgrade --user
+# Update setuptools and packaging to compatible versions
+RUN pip3 install --user setuptools==68.0.0 packaging==23.1
 
 COPY dependencies/ /var/run/laikaboss/dependencies/
 
@@ -83,9 +87,9 @@ COPY deb-requirements-2204.txt /var/run/laikaboss/
 RUN  cd /var/run/laikaboss/ && \
      /var/run/laikaboss/scripts/install-pkg-deps.sh deb-requirements-2204.txt
 
-# Create llvm-config symlink if llvm-config-10 exists
-RUN if command -v llvm-config-10 >/dev/null 2>&1; then \
-      ln -sf /usr/bin/llvm-config-10 /usr/bin/llvm-config; \
+# Create llvm-config symlink if llvm-config-14 exists
+RUN if command -v llvm-config-14 >/dev/null 2>&1; then \
+      ln -sf /usr/bin/llvm-config-14 /usr/bin/llvm-config; \
     fi
 
 # base items - and items which take a long time to build and rarely change
@@ -147,10 +151,15 @@ RUN cd /home/laikaboss/laikaboss/frontend && \
     chown -R laikaboss:laikaboss /var/www/html/webui-export && \
     chown -R laikaboss:laikaboss /var/www/html/webui
 
-# Copy setup.py and laikaboss package for installation
+# Copy setup.py, scripts, and laikaboss package for installation
 COPY setup.py /home/laikaboss/laikaboss/code/
 COPY laikaboss/ /home/laikaboss/laikaboss/code/laikaboss/
 COPY etc/ /home/laikaboss/laikaboss/code/etc/
+# Copy the executable scripts referenced by setup.py
+COPY laika.py laikad.py laikadq.py laikaconf.py laikacollector.py \
+     laikamail.py laikamilter.py cloudscan.py rediscloudscan.py \
+     laikaq-cli.py laikatest.py submitstoraged.py laikarestd.py expire.py \
+     /home/laikaboss/laikaboss/code/
 
 RUN cd /home/laikaboss/laikaboss/code && \
   python3 setup.py build && \
