@@ -42,7 +42,7 @@ _LBCUSTOM_PREFIX="LB-"
 _storage_url=None
 _storage_url_config_cache=None
 
-CustomID = namedtuple('CustomID', ['version', 'random', 'server'], verbose=False)
+CustomID = namedtuple('CustomID', ['version', 'random', 'server'])
 
 def str_to_bool(s):
   if type(s) == bool:

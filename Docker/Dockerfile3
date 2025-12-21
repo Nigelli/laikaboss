@@ -39,7 +39,9 @@ RUN apt-get update && \
   apt-get -qq update && apt-get install -y \
   automake \
   build-essential \
+  curl \
   git \
+  gnupg \
   jq \
   libtool \
   make \
@@ -49,18 +51,20 @@ RUN apt-get update && \
   sudo \
   dumb-init \
   apt-utils \
-  libpython3.6-dev \
+  libpython3.10-dev \
   python3-pip \
-  libssl1.0-dev
+  libssl-dev
 
 # For installing a newer version of node and npm than what Ubuntu defaults to.
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+# NodeSource deprecated setup_*.x scripts, using new method
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
 RUN apt-get update
 
 RUN apt-get install -y \
-  nodejs \
-  node-gyp 
+  nodejs 
 
 # Add laikaboss user
 RUN groupadd -r laikaboss -g 21043 && \
@@ -71,19 +75,22 @@ RUN groupadd -r laikaboss -g 21043 && \
 ENV PYTHONUSERBASE /opt/venvs/laikaboss
 ENV PATH="/opt/venvs/laikaboss/bin:${PATH}"
 
-# Update setuptools
-RUN pip3 install setuptools --upgrade --user
+# Update setuptools and packaging to compatible versions
+RUN pip3 install --user setuptools==68.0.0 packaging==23.1
 
 COPY dependencies/ /var/run/laikaboss/dependencies/
 
 COPY scripts/ /var/run/laikaboss/scripts/
 
-COPY deb-requirements-1804.txt /var/run/laikaboss/
+COPY deb-requirements-2204.txt /var/run/laikaboss/
 
 RUN  cd /var/run/laikaboss/ && \
-     /var/run/laikaboss/scripts/install-pkg-deps.sh deb-requirements-1804.txt
+     /var/run/laikaboss/scripts/install-pkg-deps.sh deb-requirements-2204.txt
 
-RUN ln -s llvm-config-10 llvm-config
+# Create llvm-config symlink if llvm-config-14 exists
+RUN if command -v llvm-config-14 >/dev/null 2>&1; then \
+      ln -sf /usr/bin/llvm-config-14 /usr/bin/llvm-config; \
+    fi
 
 # base items - and items which take a long time to build and rarely change
 COPY requirements3.txt requirements3.in /var/run/laikaboss/
@@ -136,25 +143,32 @@ RUN cd /home/laikaboss/laikaboss/frontend && \
     rm -rf /home/laikaboss/laikaboss/frontend/node_modules && \
     npm i && \
     npm run build && \
-    mkdir -p /opt/venvs/laikaboss/lib/python3.8/site-packages/libtiff && \
+    mkdir -p /opt/venvs/laikaboss/lib/python3.10/site-packages/libtiff && \
     mkdir -p /var/www/html/webui-export && \
     mkdir -p /var/www/html/webui && \
     npm run copy && \
-    chown -R laikaboss:laikaboss /opt/venvs/laikaboss/lib/python3.8/site-packages/libtiff && \
+    chown -R laikaboss:laikaboss /opt/venvs/laikaboss/lib/python3.10/site-packages/libtiff && \
     chown -R laikaboss:laikaboss /var/www/html/webui-export && \
     chown -R laikaboss:laikaboss /var/www/html/webui
 
-COPY code/ /home/laikaboss/laikaboss/code/
+# Copy setup.py, scripts, and laikaboss package for installation
+COPY setup.py /home/laikaboss/laikaboss/code/
+COPY laikaboss/ /home/laikaboss/laikaboss/code/laikaboss/
+COPY etc/ /home/laikaboss/laikaboss/code/etc/
+# Copy the executable scripts referenced by setup.py
+COPY laika.py laikad.py laikadq.py laikaconf.py laikacollector.py \
+     laikamail.py laikamilter.py cloudscan.py rediscloudscan.py \
+     laikaq-cli.py laikatest.py submitstoraged.py laikarestd.py expire.py \
+     /home/laikaboss/laikaboss/code/
 
 RUN cd /home/laikaboss/laikaboss/code && \
   python3 setup.py build && \
-  python3 setup.py install --user --prefix= && \
-  cp /home/laikaboss/laikaboss/code/laika_version /opt/venvs/laikaboss/laika_version
+  python3 setup.py install --user --prefix=
 
 RUN cd /home/laikaboss/ && \
-    mkdir -p /opt/venvs/laikaboss/lib/python3.6/site-packages/tools && \
-    chown -R laikaboss /opt/venvs/laikaboss/lib/python3.6/site-packages/libtiff/ && \
-    chown laikaboss /opt/venvs/laikaboss/lib/python3.6/site-packages/ && \
+    mkdir -p /opt/venvs/laikaboss/lib/python3.10/site-packages/tools && \
+    chown -R laikaboss /opt/venvs/laikaboss/lib/python3.10/site-packages/libtiff/ && \
+    chown laikaboss /opt/venvs/laikaboss/lib/python3.10/site-packages/ && \
     python3 -m pip freeze > /opt/venvs/laikaboss/laika_pip_freeze && \
     apt list --installed > /opt/venvs/laikaboss/laika_os_pkgs && \
     apt-get install -y locales; locale-gen;  localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
@@ -200,7 +214,7 @@ RUN touch /etc/laikaboss/laika_cluster.conf \
   /etc/laikaboss/secrets/s3_secret_key \
   /etc/laikaboss/secrets/s3_creds
 
-COPY entrypoint.sh /opt/venvs/laikaboss/scripts/
+COPY Docker/entrypoint.sh /opt/venvs/laikaboss/scripts/
 RUN chmod 755 /opt/venvs/laikaboss/scripts/entrypoint.sh
 
 USER laikaboss
