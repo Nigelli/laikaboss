@@ -156,7 +156,6 @@ def main():
     Config.read(CONFIG_PATH)
 
     # Parse through the config file and append each section to a single dictionary
-    global configs
     for section in Config.sections():
         configs.update(dict(Config.items(section)))
 

@@ -69,8 +69,6 @@ class NewFileHandler(PatternMatchingEventHandler):
 
 # Checks that required arguments have been specified
 def check_required_args():
-    global CONFIGS
-
     # TODO
     required = []
     missing = []
@@ -88,8 +86,6 @@ def check_required_args():
 
 # Parse options from config file and from commandline
 def parse_opts():
-    global CONFIGS
-
     parser = OptionParser(
         usage="%prog [options] [files ...]\n\nIf [files ...] is given, process just those files. Otherwise, process files in the directory given by the config file at -c or through -f.",
         version="%prog 1.0",
@@ -242,8 +238,6 @@ def parse_opts():
 
 def main():
     # Main program logic
-
-    global CONFIGS
 
     files = parse_opts()
 

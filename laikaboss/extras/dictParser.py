@@ -154,7 +154,6 @@ class DictParser(object):
    def eval(self, fmt):
       # fix me - to use proper array syntax
       # scan_result.any.META_EMAIL.Headers.accept-language
-      global _cmd_parser
       tokens = _cmd_parser.parseString(fmt)
 
       d = self
@@ -165,7 +164,6 @@ class DictParser(object):
 
    def evalMeta(self, fmt):
       # META_EMAIL.Headers.accept-language
-      global _cmd_parser
       tokens = _cmd_parser.parseString(fmt)
 
       d = self["scan_result"].any_index()["moduleMetadata"]

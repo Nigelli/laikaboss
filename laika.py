@@ -478,9 +478,6 @@ class Consumer(multiprocessing.Process):
             raise IOError('error unknown type for file:%s, type:%d' % (uuid1, task_type))
 
     def run(self):
-        global CONFIG_PATH
-
-
         config.init(path=CONFIG_PATH)
         init_logging()
         self.load_auth_config()
