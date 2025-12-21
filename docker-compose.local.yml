@@ -1,0 +1,302 @@
+# Full-stack docker-compose for local smoke testing
+# Usage: docker compose -f docker-compose.local.yml up
+#
+# Services:
+#   - laikarestd: REST API on port 8123
+#   - frontend: Apache reverse proxy on ports 8080 (HTTP) and 8443 (HTTPS)
+#   - redis: Redis on port 6379 (no TLS for local testing)
+#   - minio: S3-compatible storage on port 9000 (API) and 9001 (Console)
+#
+# Access the Web UI at: http://localhost:8080
+# Access MinIO Console at: http://localhost:9001 (minioadmin/minioadmin)
+# Default credentials are in ./secrets/local_creds after first run
+
+services:
+  # Setup service - creates necessary directories and self-signed certs
+  setup:
+    image: laikaboss:local
+    user: root
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        echo "Setting up directories and certificates..."
+
+        # Create directories
+        mkdir -p /etc/laikaboss/secrets/redis /etc/laikaboss/secrets/apache
+        mkdir -p /var/laikaboss/submission-queue/webui /var/laikaboss/submission-error
+        mkdir -p /var/laikaboss/storage-queue /var/laikaboss/storage-error
+        mkdir -p /var/log/laikaboss /var/www/html/webui
+
+        # Generate self-signed certificates if they don't exist or are empty
+        if [ ! -s /etc/laikaboss/secrets/server.crt ]; then
+          echo "Generating self-signed certificates..."
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout /etc/laikaboss/secrets/server.key \
+            -out /etc/laikaboss/secrets/server.crt \
+            -subj "/C=US/ST=Local/L=Local/O=LaikaBoss/CN=localhost"
+          cp /etc/laikaboss/secrets/server.crt /etc/laikaboss/secrets/cacert.crt
+          cp /etc/laikaboss/secrets/server.key /etc/laikaboss/secrets/apache/server.key
+          cp /etc/laikaboss/secrets/server.crt /etc/laikaboss/secrets/apache/server.crt
+          cp /etc/laikaboss/secrets/cacert.crt /etc/laikaboss/secrets/apache/cacert.crt
+          # Redis certs
+          cp /etc/laikaboss/secrets/server.key /etc/laikaboss/secrets/redis/server.key
+          cp /etc/laikaboss/secrets/server.crt /etc/laikaboss/secrets/redis/server.crt
+          cp /etc/laikaboss/secrets/cacert.crt /etc/laikaboss/secrets/redis/cacert.crt
+        fi
+
+        # Generate redis password if it doesn't exist or is empty
+        if [ ! -s /etc/laikaboss/secrets/redis/redis_pass ]; then
+          echo "localredispass123" > /etc/laikaboss/secrets/redis/redis_pass
+        fi
+
+        # Generate local credentials and htpasswd if they don't exist or are empty
+        if [ ! -s /etc/laikaboss/secrets/local_creds ]; then
+          PASS=$$(openssl rand -base64 12)
+          echo "laika_system:$$PASS" > /etc/laikaboss/secrets/local_creds
+          echo "Generated local_creds: laika_system / $$PASS"
+          # Generate htpasswd entry using Python (bcrypt)
+          python3 -c "import bcrypt; p='$$PASS'.encode(); h=bcrypt.hashpw(p, bcrypt.gensalt()).decode(); print('laika_system:' + h)" > /etc/laikaboss/secrets/htpasswd.db
+        fi
+
+        # Generate S3/MinIO credentials
+        if [ ! -s /etc/laikaboss/secrets/s3_access_key ]; then
+          echo "minioadmin" > /etc/laikaboss/secrets/s3_access_key
+        fi
+        if [ ! -s /etc/laikaboss/secrets/s3_secret_key ]; then
+          echo "minioadmin" > /etc/laikaboss/secrets/s3_secret_key
+        fi
+        if [ ! -s /etc/laikaboss/secrets/s3_creds ]; then
+          echo "minioadmin:minioadmin" > /etc/laikaboss/secrets/s3_creds
+        fi
+
+        # Ensure htpasswd.db exists
+        if [ ! -f /etc/laikaboss/secrets/htpasswd.db ]; then
+          touch /etc/laikaboss/secrets/htpasswd.db
+        fi
+
+        # Set permissions
+        chown -R 21043:21043 /var/laikaboss /var/log/laikaboss /var/www/html/webui
+        chown -R 21043:21043 /etc/laikaboss
+        chmod 600 /etc/laikaboss/secrets/*.key 2>/dev/null || true
+        chmod 600 /etc/laikaboss/secrets/redis/*.key 2>/dev/null || true
+        chmod 600 /etc/laikaboss/secrets/apache/*.key 2>/dev/null || true
+
+        echo "Setup complete!"
+        cat /etc/laikaboss/secrets/local_creds
+    volumes:
+      - laika-secrets:/etc/laikaboss/secrets
+      - laika-data:/var/laikaboss
+      - laika-logs:/var/log/laikaboss
+      - laika-webui:/var/www/html/webui
+
+  # Redis - simple local instance without TLS
+  redis:
+    image: redis:6.0.5
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--appendonly", "no", "--bind", "0.0.0.0"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+
+  # MinIO - S3-compatible object storage
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mc alias set localminio http://minio:9000 minioadmin minioadmin
+        mc mb --ignore-existing localminio/laikaboss-local-storage
+        mc mb --ignore-existing localminio/laikaboss-local-storage-json
+        mc mb --ignore-existing localminio/laikaboss-local-cached-files
+        mc mb --ignore-existing localminio/laikaboss-local-memorialized-storage
+        mc mb --ignore-existing localminio/laikaboss-local-email
+        mc mb --ignore-existing localminio/laikaboss-local-webui
+        mc mb --ignore-existing localminio/laikaboss-local-default
+        echo "MinIO buckets created successfully"
+
+  # Laika REST API
+  laikarestd:
+    image: laikaboss:local
+    ports:
+      - "127.0.0.1:8123:8123"
+    volumes:
+      - laika-secrets:/etc/laikaboss/secrets:ro
+      - laika-data:/var/laikaboss
+      - laika-logs:/var/log/laikaboss
+      - laika-webui:/var/www/html/webui
+      - ./etc/local/laika_cluster.conf:/etc/laikaboss/laika_cluster.conf:ro
+      - ./etc/local/laikarestd_config.py:/etc/laikaboss/laikarestd_config.py:ro
+      - ./etc/local/laikarestd.conf:/etc/laikaboss/laikarestd.conf:ro
+      - ./etc/local/laikastorage-index.conf:/etc/laikaboss/laikastorage-index.conf:ro
+    command: ["-r", "-d"]
+    environment:
+      - LAIKRESTD_BIND=0.0.0.0:8123
+      - CONFIG_PATH=/etc/laikaboss/laikarestd_config.py
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8123/source"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Apache frontend (reverse proxy)
+  frontend:
+    build:
+      context: ./Docker/apache
+    image: laikaboss-apache:local
+    ports:
+      - "0.0.0.0:8080:80"
+      - "0.0.0.0:8443:443"
+    volumes:
+      - laika-webui:/usr/local/apache2/htdocs
+      - laika-secrets:/etc/laikaboss/secrets:ro
+    depends_on:
+      - laikarestd
+    command: >
+      /bin/bash -c "
+        cp /etc/laikaboss/secrets/apache/server.key /usr/local/apache2/conf/server.key 2>/dev/null ||
+        cp /etc/laikaboss/secrets/server.key /usr/local/apache2/conf/server.key;
+        cp /etc/laikaboss/secrets/apache/server.crt /usr/local/apache2/conf/server.crt 2>/dev/null ||
+        cp /etc/laikaboss/secrets/server.crt /usr/local/apache2/conf/server.crt;
+        cp /etc/laikaboss/secrets/apache/cacert.crt /usr/local/apache2/conf/server-ca.crt 2>/dev/null ||
+        cp /etc/laikaboss/secrets/cacert.crt /usr/local/apache2/conf/server-ca.crt;
+        httpd-foreground
+      "
+
+  # Laika Collector - picks up submissions from queue and sends to scanner
+  laikacollector:
+    image: laikaboss:local
+    volumes:
+      - laika-secrets:/etc/laikaboss/secrets:ro
+      - laika-data:/var/laikaboss
+      - laika-logs:/var/log/laikaboss
+      - ./etc/local/laika_cluster.conf:/etc/laikaboss/laika_cluster.conf:ro
+    command: ["-c"]
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      laikad:
+        condition: service_started
+
+  # Laika Scanner Daemon - the actual file scanner
+  laikad:
+    image: laikaboss:local
+    volumes:
+      - laika-secrets:/etc/laikaboss/secrets:ro
+      - laika-data:/var/laikaboss
+      - laika-logs:/var/log/laikaboss
+      - ./etc/local/laika_cluster.conf:/etc/laikaboss/laika_cluster.conf:ro
+    command: ["-q"]
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # Submit Storage Daemon - stores scan results to MinIO
+  submitstorage:
+    image: laikaboss:local
+    volumes:
+      - laika-secrets:/etc/laikaboss/secrets:ro
+      - laika-data:/var/laikaboss
+      - laika-logs:/var/log/laikaboss
+      - ./etc/local/laika_cluster.conf:/etc/laikaboss/laika_cluster.conf:ro
+      - ./etc/local/laikastorage-index.conf:/etc/laikaboss/laikastorage-index.conf:ro
+    command: ["-s"]
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  # Laika Mail - Simple SMTP server that queues emails for scanning
+  # Uses aiosmtpd instead of slimta due to packaging issues
+  laikamail:
+    image: laikaboss:local
+    ports:
+      - "127.0.0.1:2525:2525"
+    volumes:
+      - laika-secrets:/etc/laikaboss/secrets:ro
+      - laika-data:/var/laikaboss
+      - laika-logs:/var/log/laikaboss
+      - ./etc/local/laika_cluster.conf:/etc/laikaboss/laika_cluster.conf:ro
+      - ./etc/local/simple_smtp.py:/opt/simple_smtp.py:ro
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        exec python3 /opt/simple_smtp.py
+    environment:
+      - SMTP_HOST=0.0.0.0
+      - SMTP_PORT=2525
+      - SUBMISSION_DIR=/var/laikaboss/submission-queue/email
+      - SOURCE=email-localhost
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      laikacollector:
+        condition: service_started
+
+  # Standalone scanner for manual testing
+  laika:
+    image: laikaboss:local
+    profiles: ["cli"]
+    volumes:
+      - ./workdir:/home/laikaboss/workdir
+      - laika-logs:/var/log/laikaboss
+      - laika-data:/var/laikaboss
+    entrypoint: ["/bin/bash"]
+    stdin_open: true
+    tty: true
+
+volumes:
+  laika-secrets:
+  laika-data:
+  laika-logs:
+  laika-webui:
+  redis-data:
+  minio-data:

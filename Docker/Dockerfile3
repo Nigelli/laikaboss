@@ -154,6 +154,7 @@ RUN cd /home/laikaboss/laikaboss/frontend && \
 # Copy setup.py, scripts, and laikaboss package for installation
 COPY setup.py /home/laikaboss/laikaboss/code/
 COPY laikaboss/ /home/laikaboss/laikaboss/code/laikaboss/
+COPY laikarest/ /home/laikaboss/laikaboss/code/laikarest/
 COPY etc/ /home/laikaboss/laikaboss/code/etc/
 # Copy the executable scripts referenced by setup.py
 COPY laika.py laikad.py laikadq.py laikaconf.py laikacollector.py \

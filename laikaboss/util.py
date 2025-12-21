@@ -159,8 +159,6 @@ def log_result(result, returnOutput=False):
     Returns:
     Nothing.
     '''
-    global log_delimiter
-    global log_delimiter_replacement
     # check result.source (set by the caller) to see if its in our list of sources 
     # we should log from. this is to exclude logging from sources such as filescan.
     # this can be overridden using the 'all' keyword in the configuration.
@@ -292,8 +290,6 @@ def log_module(module_status, module_name, module_time, scanObject, result, msg=
     Returns:
     Nothing
     '''
-    global log_delimiter
-    global log_delimiter_replacement
     try:
         rootObject = getRootObject(result)
         parentFilename = ""
@@ -336,9 +332,6 @@ def log_module_error(module_name, scanObject, result, error):
     Returns:
     Nothing
     '''
-    global log_delimiter
-    global log_delimiter_replacement
-
     if scanObject is None:
         parentUID = ""
         UID = ""
