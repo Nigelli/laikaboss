@@ -21,8 +21,8 @@ services:
   laikad:
     build:
       context: .
-      dockerfile: Docker/DockerfileCore
-    image: laikaboss-core:local
+      dockerfile: Docker/DockerfileCoreSlim
+    image: laikaboss-core:slim
     ports:
       - "5558:5558"
     volumes:
