@@ -1,0 +1,31 @@
+# docker-compose-core.yml - Core ZeroMQ Laika BOSS Scanner
+#
+# Minimal scanner using the original ZMQ architecture.
+# No Redis, no REST API, no web frontend, no mail server.
+#
+# Build:
+#   docker compose -f docker-compose-core.yml build
+#
+# Run daemon:
+#   docker compose -f docker-compose-core.yml up
+#
+# Scan a file (from another terminal):
+#   docker compose -f docker-compose-core.yml exec laikad \
+#     cloudscan.py -a tcp://localhost:5558 /home/laikaboss/workdir/testfile
+#
+# Or run standalone scanner:
+#   docker compose -f docker-compose-core.yml run --rm laikad \
+#     laika.py /home/laikaboss/workdir/testfile | jq .
+
+services:
+  laikad:
+    build:
+      context: .
+      dockerfile: Docker/DockerfileCore
+    image: laikaboss-core:local
+    ports:
+      - "5558:5558"
+    volumes:
+      - ./workdir:/home/laikaboss/workdir
+    command: ["laikad.py", "-d"]
+    restart: unless-stopped

@@ -1,0 +1,111 @@
+# DockerfileCore - Minimal ZeroMQ-based Laika BOSS Scanner
+#
+# A lightweight container for the core laikad (ZMQ) scanner.
+# No Redis, no REST API, no web frontend, no mail server - just the scanner.
+#
+# Build:
+#   docker build -f Docker/DockerfileCore -t laikaboss-core:local .
+#
+# Run standalone scanner:
+#   docker run --rm -v ~/workdir:/home/laikaboss/workdir laikaboss-core:local \
+#     laika.py /home/laikaboss/workdir/testfile | jq .
+#
+# Run networked daemon:
+#   docker run --rm -p 5558:5558 laikaboss-core:local laikad.py -d
+#
+# Scan via network client:
+#   docker run --rm -v ~/workdir:/home/laikaboss/workdir --network host laikaboss-core:local \
+#     cloudscan.py -a tcp://localhost:5558 /home/laikaboss/workdir/testfile
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install base packages (subset of Dockerfile3 - no Node.js)
+RUN apt-get update && \
+    apt-get -y install software-properties-common && \
+    apt-add-repository -y multiverse && \
+    apt-get -qq update && apt-get install -y \
+    curl \
+    dumb-init \
+    apt-utils \
+    libpython3.10-dev \
+    python3-pip \
+    libssl-dev
+
+# Add laikaboss user
+RUN groupadd -r laikaboss -g 21043 && \
+    useradd -r -u 21043 -g laikaboss -d /home/laikaboss -s /bin/bash -c "Laika User" laikaboss && \
+    mkdir -p /home/laikaboss/workdir && \
+    chown -R laikaboss:laikaboss /home/laikaboss
+
+ENV PYTHONUSERBASE=/opt/venvs/laikaboss
+ENV PATH="/opt/venvs/laikaboss/bin:${PATH}"
+
+# Update setuptools and packaging
+RUN pip3 install --user setuptools==68.0.0 packaging==23.1
+
+# Copy and install system packages using project script
+COPY dependencies/ /var/run/laikaboss/dependencies/
+COPY scripts/install-pkg-deps.sh /var/run/laikaboss/scripts/
+COPY deb-requirements-core.txt /var/run/laikaboss/
+
+RUN cd /var/run/laikaboss/ && \
+    chmod +x scripts/install-pkg-deps.sh && \
+    ./scripts/install-pkg-deps.sh deb-requirements-core.txt
+
+# Create llvm-config symlink if llvm-config-14 exists
+RUN if command -v llvm-config-14 >/dev/null 2>&1; then \
+      ln -sf /usr/bin/llvm-config-14 /usr/bin/llvm-config; \
+    fi
+
+# Install Python dependencies
+RUN pip3 install --user pip==21.3.1 pip-tools
+
+COPY requirements-core.in /var/run/laikaboss/
+
+# Install from .in file (dependencies dir must be present for file: references)
+RUN cd /var/run/laikaboss/ && \
+    python3 -m pip install --user --upgrade -r requirements-core.in
+
+# Create runtime directories
+RUN mkdir -p /var/log/laikaboss /var/laikaboss/tmp /etc/laikaboss && \
+    chown -R laikaboss:laikaboss /var/log/laikaboss /var/laikaboss /etc/laikaboss && \
+    chmod 775 /var/log/laikaboss
+
+# Copy and install laikaboss core package
+COPY setup_core.py /home/laikaboss/laikaboss/code/
+COPY laikaboss/ /home/laikaboss/laikaboss/code/laikaboss/
+COPY etc/ /home/laikaboss/laikaboss/code/etc/
+COPY laika.py laikad.py cloudscan.py /home/laikaboss/laikaboss/code/
+
+RUN cd /home/laikaboss/laikaboss/code && \
+    python3 setup_core.py build && \
+    python3 setup_core.py install --user --prefix=
+
+# Install locales
+RUN apt-get install -y locales && \
+    locale-gen && \
+    localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+
+# Clean up build dependencies to reduce image size
+RUN ldconfig && \
+    apt-get remove -y --purge automake build-essential libtool autoconf cmake gcc make && \
+    apt-get autoremove -y --purge && \
+    apt-get clean -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/run/laikaboss/dependencies/ && \
+    rm -rf /var/run/laikaboss/scripts/ && \
+    rm -rf /home/laikaboss/laikaboss && \
+    chown -R laikaboss /home/laikaboss && \
+    chown -R laikaboss /etc/laikaboss
+
+USER laikaboss
+WORKDIR /home/laikaboss
+
+# ZMQ broker port
+EXPOSE 5558
+
+# Default: interactive shell
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/bin/bash"]
