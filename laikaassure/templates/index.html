@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Scan - Laika Assure{% endblock %}
+
+{% block content %}
+<div class="scan-page">
+    <h1>Scan File</h1>
+    <p class="subtitle">Upload a file to scan, then save the result as a test case.</p>
+
+    <!-- Upload Area -->
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+        </div>
+        <p>Drag and drop a file here, or click to select</p>
+        <input type="file" id="fileInput" hidden>
+        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+            Select File
+        </button>
+    </div>
+
+    <!-- Scanning indicator -->
+    <div class="scanning-indicator" id="scanningIndicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>Scanning <span id="scanningFilename"></span>...</p>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section" id="resultsSection" style="display: none;">
+        <h2>Scan Result</h2>
+
+        <!-- Quick Summary -->
+        <div class="result-summary">
+            <div class="summary-item">
+                <span class="label">Disposition:</span>
+                <span class="value disposition" id="resultDisposition">-</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Flags:</span>
+                <span class="value" id="resultFlags">-</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Objects:</span>
+                <span class="value" id="resultObjects">-</span>
+            </div>
+        </div>
+
+        <!-- Modules Run -->
+        <div class="modules-section">
+            <h3>Modules Executed</h3>
+            <div class="modules-list" id="modulesList"></div>
+        </div>
+
+        <!-- Full JSON Result (collapsible) -->
+        <details class="json-details">
+            <summary>Full JSON Result</summary>
+            <pre id="jsonResult"></pre>
+        </details>
+
+        <!-- Save as Test Case -->
+        <div class="save-testcase">
+            <h3>Save as Test Case</h3>
+            <p>Create a test case that validates future scans produce the same result.</p>
+
+            <form id="saveTestForm">
+                <div class="form-group">
+                    <label for="testName">Test Name *</label>
+                    <input type="text" id="testName" required placeholder="e.g., suspicious_macro_email">
+                </div>
+
+                <div class="form-group">
+                    <label for="testDescription">Description</label>
+                    <textarea id="testDescription" rows="2" placeholder="What does this test validate?"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="testTags">Tags (comma-separated)</label>
+                    <input type="text" id="testTags" placeholder="e.g., email, critical, macros">
+                </div>
+
+                <div class="form-group">
+                    <label>Assertions to capture:</label>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="captureDisposition" checked>
+                            Disposition must match
+                        </label>
+                        <label>
+                            <input type="checkbox" id="captureFlags" checked>
+                            All flags must be present
+                        </label>
+                        <label>
+                            <input type="checkbox" id="captureModules">
+                            All modules must run
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    Save Test Case
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Error Section -->
+    <div class="error-section" id="errorSection" style="display: none;">
+        <h2>Error</h2>
+        <p id="errorMessage"></p>
+        <button class="btn btn-secondary" onclick="resetScan()">Try Again</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentScanResult = null;
+    let currentFile = null;
+    let currentFileContent = null;
+
+    // File upload handling
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            handleFile(fileInput.files[0]);
+        }
+    });
+
+    // Helper to read file as base64
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                // reader.result is a data URL like "data:application/octet-stream;base64,XXXX"
+                // We just want the base64 part
+                const base64 = reader.result.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function handleFile(file) {
+        currentFile = file;
+
+        // Read file content for later saving (do this first, before scan)
+        try {
+            currentFileContent = await readFileAsBase64(file);
+        } catch (err) {
+            console.error('Failed to read file:', err);
+            currentFileContent = null;
+        }
+
+        // Show scanning indicator
+        document.getElementById('uploadArea').style.display = 'none';
+        document.getElementById('scanningIndicator').style.display = 'flex';
+        document.getElementById('scanningFilename').textContent = file.name;
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('errorSection').style.display = 'none';
+
+        // Upload and scan
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/scan', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Scan failed');
+            }
+
+            currentScanResult = result;
+            displayResults(result);
+
+        } catch (error) {
+            showError(error.message);
+        }
+    }
+
+    function displayResults(result) {
+        document.getElementById('scanningIndicator').style.display = 'none';
+        document.getElementById('resultsSection').style.display = 'block';
+
+        const ui = result._ui || {};
+
+        // Disposition
+        const dispEl = document.getElementById('resultDisposition');
+        dispEl.textContent = ui.disposition || 'Unknown';
+        dispEl.className = 'value disposition ' + (ui.disposition || '').toLowerCase();
+
+        // Flags
+        const flags = ui.flags || [];
+        document.getElementById('resultFlags').textContent = flags.length > 0 ? flags.join(', ') : 'None';
+
+        // Objects count
+        document.getElementById('resultObjects').textContent = ui.file_count || 1;
+
+        // Modules
+        const modules = ui.modules || [];
+        const modulesList = document.getElementById('modulesList');
+        modulesList.innerHTML = modules.map(m => `<span class="module-tag">${m}</span>`).join('');
+
+        // JSON
+        document.getElementById('jsonResult').textContent = JSON.stringify(result, null, 2);
+
+        // Pre-fill test name
+        document.getElementById('testName').value = currentFile.name.replace(/[^a-zA-Z0-9]/g, '_');
+    }
+
+    function showError(message) {
+        document.getElementById('scanningIndicator').style.display = 'none';
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('errorSection').style.display = 'block';
+        document.getElementById('errorMessage').textContent = message;
+    }
+
+    function resetScan() {
+        document.getElementById('uploadArea').style.display = 'block';
+        document.getElementById('scanningIndicator').style.display = 'none';
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('errorSection').style.display = 'none';
+        currentScanResult = null;
+        currentFile = null;
+        currentFileContent = null;
+        fileInput.value = '';
+    }
+
+    // Save test case form
+    document.getElementById('saveTestForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!currentScanResult || !currentFile) {
+            alert('No scan result to save');
+            return;
+        }
+
+        if (!currentFileContent) {
+            alert('File content not available. Please re-upload the file.');
+            return;
+        }
+
+        const data = {
+            name: document.getElementById('testName').value,
+            description: document.getElementById('testDescription').value,
+            tags: document.getElementById('testTags').value.split(',').map(t => t.trim()).filter(t => t),
+            filename: currentFile.name,
+            file_content: currentFileContent,
+            scan_result: currentScanResult,
+            capture_disposition: document.getElementById('captureDisposition').checked,
+            capture_flags: document.getElementById('captureFlags').checked,
+            capture_modules: document.getElementById('captureModules').checked,
+        };
+
+        try {
+            const response = await fetch('/api/testcase', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to save test case');
+            }
+
+            alert('Test case saved successfully!\n\nPath: ' + result.path);
+
+        } catch (error) {
+            alert('Error saving test case: ' + error.message);
+        }
+    });
+</script>
+{% endblock %}
