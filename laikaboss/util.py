@@ -28,7 +28,6 @@ import tempfile
 import datetime
 import time
 import socket
-from minio import Minio
 from contextlib import contextmanager
 from laikaboss.objectmodel import QuitScanException, GlobalScanTimeoutError, GlobalModuleTimeoutError
 from laikaboss import config

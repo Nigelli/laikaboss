@@ -20,7 +20,6 @@ Laika is an object scanner and intrusion detection system that strives to achiev
 
 - No inline email blocking with integrated email server
 - No Redis integration with Laikamilter/Sendmail
-- Docker image uses Ubuntu 18.04 (Python 3.6) - **Recommended to upgrade to Ubuntu 22.04 (Python 3.10+)**
 - Buffer bloat/on disk caching at each level causes latency
 - Needs Kubernetes configuration/distribution - cluster is just deploying docker images across multiple systems
 - Needs more framework and GUI tests
@@ -123,6 +122,39 @@ Each scan does three main actions on each object:
 
 **Whitepaper can be found @ [http://lockheedmartin.com/us/what-we-do/information-technology/cybersecurity/laika-boss.html](http://lockheedmartin.com/us/what-we-do/information-technology/cybersecurity/laika-boss.html)**
 
+## Deployment Options
+
+This fork provides two deployment options:
+
+### Core Scanner (ZeroMQ)
+A lightweight, standalone scanner using the original ZeroMQ architecture. Ideal for:
+- Simple deployments without external dependencies
+- Drop-in replacement for the original Lockheed Martin laikaboss
+- Users who don't need Redis, REST API, or web interface
+
+```bash
+# Build and run
+docker compose -f docker-compose-core.yml build
+docker compose -f docker-compose-core.yml up
+
+# Scan a file
+docker compose -f docker-compose-core.yml exec laikad \
+  cloudscan.py -a tcp://localhost:5558 /home/laikaboss/workdir/yourfile
+```
+
+### Full Stack (Redis)
+A complete deployment with Redis work queues, REST API, web GUI, mail server, and S3 storage. Ideal for:
+- Enterprise deployments with multiple workers
+- Web-based file submission and result viewing
+- Email scanning pipelines
+- Integration with Splunk and other logging systems
+
+```bash
+# Build and run
+docker compose build
+docker compose up
+```
+
 ## Components
 Laika is composed of the following pieces:
 
@@ -130,17 +162,17 @@ Laika is composed of the following pieces:
 
 	This is the core of Laika BOSS. It includes the object model and the dispatching logic.
 
-+ **laikadq**
++ **laikad** (Core Scanner)
 
-	This piece contains the code for running Laika as a deamon, which uses redis as a work queue.
+	Runs Laika as a daemonized, networked service using ZeroMQ. This is the original architecture from Lockheed Martin, now containerized with `docker-compose-core.yml`.
 
-+ **laikad**
++ **laikadq** (Full Stack)
 
-	This piece contains the code for running Laika as a deamonized, networked service using the ZeroMQ broker.  (This fork does not use this component - so modifications are not as tested.)
+	Runs Laika as a daemon using Redis as a work queue. This is the architecture used by the full stack deployment.
 
 + **cloudscan**
 
-	A command-line client for sending a local system file to a running service instance of Laika (laikad).
+	A command-line client for sending files to a running laikad instance (ZeroMQ).
 
 + **laikatest**
     A test framework for modules, run `./laikatest.py` to run all tests in the `tests` directory. Tests for some modules are included.
@@ -186,12 +218,50 @@ The Laika BOSS mail server can replace sendmail or postfix (and laikamilter) if 
 	The scan itself is composed of the running of modules. Each module is its own program that focuses on a particular sub-component of the overall file analysis.
 
 ## Getting Started
-The Laika BOSS installation scripts have only been tested on Ubuntu 18.04 (vm or docker image). The upstream LM version has been tested on the latest versions of CentOS and Ubuntu LTS
 
-+ Writing new modules
+### Quick Start - Core Scanner
+The fastest way to get scanning is with the core scanner image:
+
+```bash
+# Clone the repo
+git clone https://github.com/sandialabs/laikaboss.git
+cd laikaboss
+
+# Create a workdir for files to scan
+mkdir -p workdir
+
+# Build and start the scanner daemon
+docker compose -f docker-compose-core.yml build
+docker compose -f docker-compose-core.yml up -d
+
+# Scan a file
+cp /path/to/suspicious/file workdir/
+docker compose -f docker-compose-core.yml exec laikad \
+  cloudscan.py -a tcp://localhost:5558 /home/laikaboss/workdir/file | jq .
+
+# Or run standalone (no daemon)
+docker compose -f docker-compose-core.yml run --rm laikad \
+  laika.py /home/laikaboss/workdir/file | jq .
+```
+
+### Quick Start - Full Stack
+For the complete deployment with web GUI, REST API, and email scanning:
+
+```bash
+# Build and start all services
+docker compose build
+docker compose up -d
+
+# Access the web GUI at https://localhost:8443
+# Default credentials are in /etc/laikaboss/secrets/local_creds
+```
+
+See the detailed installation instructions below for production deployments.
+
+### Writing New Modules
 See the EXPLODE\_HELLOWORLD module (in `laikaboss/modules/explode_helloworld.py`) for an example of how to write a module.
 
-#### Running LB
+### Running Standalone
 From the directory containing the framework code, you may run the standalone scanner, laika.py against any file you choose. If you move this file from this directory you'll have to specify various config locations. By default it uses the configurations in the ./etc directory.
 
 We recommend using [jq](http://stedolan.github.io/jq/) to parse Laika output.

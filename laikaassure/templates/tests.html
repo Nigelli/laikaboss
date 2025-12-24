@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Test Cases - Laika Assure{% endblock %}
+
+{% block content %}
+<div class="tests-page">
+    <div class="page-header">
+        <h1>Test Cases</h1>
+        <button class="btn btn-primary" onclick="runAllTests()">
+            Run All Tests
+        </button>
+    </div>
+
+    <!-- Test Results Summary (shown after running) -->
+    <div class="test-results-summary" id="testResultsSummary" style="display: none;">
+        <div class="summary-card passed">
+            <span class="count" id="passedCount">0</span>
+            <span class="label">Passed</span>
+        </div>
+        <div class="summary-card failed">
+            <span class="count" id="failedCount">0</span>
+            <span class="label">Failed</span>
+        </div>
+        <div class="summary-card total">
+            <span class="count" id="totalCount">0</span>
+            <span class="label">Total</span>
+        </div>
+    </div>
+
+    <!-- Running indicator -->
+    <div class="running-indicator" id="runningIndicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>Running tests...</p>
+    </div>
+
+    <!-- Test Cases List -->
+    <div class="test-cases-list" id="testCasesList">
+        <p class="loading">Loading test cases...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let testCases = [];
+    let testResults = {};
+
+    // Load test cases on page load
+    document.addEventListener('DOMContentLoaded', loadTestCases);
+
+    async function loadTestCases() {
+        try {
+            const response = await fetch('/api/testcases');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to load test cases');
+            }
+
+            testCases = data.test_cases || [];
+            renderTestCases();
+
+        } catch (error) {
+            document.getElementById('testCasesList').innerHTML = `
+                <p class="error">Error loading test cases: ${error.message}</p>
+            `;
+        }
+    }
+
+    function renderTestCases() {
+        const container = document.getElementById('testCasesList');
+
+        if (testCases.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>No test cases found.</p>
+                    <p>Go to the <a href="/">Scan page</a> to create test cases from scan results.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = testCases.map((tc, index) => `
+            <div class="test-case-card" id="testCase${index}" data-status="${testResults[tc.name]?.passed === true ? 'passed' : testResults[tc.name]?.passed === false ? 'failed' : ''}">
+                <div class="test-case-header">
+                    <div class="test-case-name">
+                        <span class="status-indicator"></span>
+                        ${tc.name}
+                    </div>
+                    <div class="test-case-meta">
+                        <span class="assertion-count">${tc.assertion_count} assertions</span>
+                        ${tc.enabled ? '' : '<span class="disabled-badge">Disabled</span>'}
+                    </div>
+                </div>
+                ${tc.description ? `<p class="test-case-description">${tc.description}</p>` : ''}
+                <div class="test-case-footer">
+                    <div class="tags">
+                        ${tc.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    <div class="sample-name">
+                        Sample: ${tc.sample}
+                    </div>
+                </div>
+                ${testResults[tc.name] ? renderTestResultDetails(testResults[tc.name]) : ''}
+            </div>
+        `).join('');
+    }
+
+    function renderTestResultDetails(result) {
+        if (!result.assertions || result.assertions.length === 0) {
+            if (result.error) {
+                return `<div class="test-result-details error"><p>${result.error}</p></div>`;
+            }
+            return '';
+        }
+
+        return `
+            <div class="test-result-details">
+                <div class="assertions-list">
+                    ${result.assertions.map(a => `
+                        <div class="assertion ${a.passed ? 'passed' : 'failed'}">
+                            <span class="assertion-icon">${a.passed ? '✓' : '✗'}</span>
+                            <span class="assertion-path">${a.path}</span>
+                            <span class="assertion-message">${a.message}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="test-duration">${result.duration_ms.toFixed(0)}ms</div>
+            </div>
+        `;
+    }
+
+    async function runAllTests() {
+        document.getElementById('runningIndicator').style.display = 'flex';
+        document.getElementById('testResultsSummary').style.display = 'none';
+
+        try {
+            const response = await fetch('/api/testcases/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to run tests');
+            }
+
+            // Store results
+            testResults = {};
+            for (const result of data.results) {
+                testResults[result.name] = result;
+            }
+
+            // Update summary
+            document.getElementById('passedCount').textContent = data.summary.passed;
+            document.getElementById('failedCount').textContent = data.summary.failed;
+            document.getElementById('totalCount').textContent = data.summary.total;
+            document.getElementById('testResultsSummary').style.display = 'flex';
+
+            // Re-render with results
+            renderTestCases();
+
+        } catch (error) {
+            alert('Error running tests: ' + error.message);
+        } finally {
+            document.getElementById('runningIndicator').style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

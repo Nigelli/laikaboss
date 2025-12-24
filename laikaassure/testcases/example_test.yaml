@@ -1,0 +1,53 @@
+# Example Test Case
+#
+# This is an example test case that validates basic scanning functionality.
+# Copy and modify this file to create your own test cases.
+
+name: example_text_file
+
+# Sample file relative to this YAML file
+sample: samples/example.txt
+
+description: |
+  Example test that validates a plain text file is scanned and accepted.
+  This serves as a template for creating your own test cases.
+
+tags:
+  - example
+  - basic
+
+enabled: true
+
+assertions:
+  # Verify the file is accepted (not quarantined or rejected)
+  - path: disposition
+    equals: Accept
+    message: "Plain text files should be accepted"
+
+  # Verify at least the basic modules ran
+  - path: modules
+    contains: META_HASH
+
+  - path: modules
+    contains: SCAN_YARA
+
+  - path: modules
+    contains: DISPOSITIONER
+
+  # Verify we got hash metadata
+  - path: metadata.META_HASH.HASHES.md5
+    exists: true
+
+  - path: metadata.META_HASH.HASHES.SHA256
+    exists: true
+
+  # Verify no suspicious flags
+  - path: flags
+    not_contains: MALWARE
+
+  - path: flags
+    not_contains: SUSPICIOUS
+
+  # Verify only one object in result (no exploded children)
+  - path: file_count
+    equals: 1
