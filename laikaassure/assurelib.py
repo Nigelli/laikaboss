@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import re
+import traceback
 import yaml
 from dataclasses import dataclass, field
 from enum import Enum
@@ -288,6 +289,19 @@ class ScanClient:
             Dictionary containing scan results
         """
         raise NotImplementedError
+
+    def close(self):
+        """Close the client and release resources."""
+        pass
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures cleanup."""
+        self.close()
+        return False
 
 
 class ZMQScanClient(ScanClient):
@@ -626,8 +640,9 @@ def load_test_cases(directory: str, recursive: bool = True) -> List[TestCase]:
             test_cases.append(test_case)
         except Exception as e:
             logging.warning(f"Failed to load test case from {yaml_file}: {e}")
+            logging.debug(f"Traceback: {traceback.format_exc()}")
 
-        return test_cases
+    return test_cases
 
 
 def create_test_case_from_scan(

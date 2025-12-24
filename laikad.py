@@ -38,6 +38,7 @@ import os
 from random import randint
 import signal
 from laikaboss.objectmodel import ScanResult, ScanObject, QuitScanException
+from laikaboss.constants import level_minimal
 import sys
 import syslog
 import time
@@ -96,6 +97,7 @@ DEFAULT_CONFIGS = {
     'gracetimeout': '30',
     'workerpolltimeout': '300',
     'log_result' : 'False',
+    'use_request_scan_level': 'False',  # Backward compat: don't use request level unless explicitly enabled
     'dev_config_path' : 'etc/framework/laikaboss.conf',
     'sys_config_path' : '/etc/laikaboss/laikaboss.conf',
     'laikad_dev_config_path' : 'etc/laikad/laikad.conf',
@@ -444,9 +446,10 @@ class Worker(Process):
     '''
 
     def __init__(self, config_location, broker_address, max_scan_items, ttl,
-    logresult=False, 
-    poll_timeout=300, 
-    shutdown_grace_timeout=SHUTDOWN_GRACE_TIMEOUT_DEFAULT):
+    logresult=False,
+    poll_timeout=300,
+    shutdown_grace_timeout=SHUTDOWN_GRACE_TIMEOUT_DEFAULT,
+    use_request_scan_level=False):
         '''Main constructor'''
         super(Worker, self).__init__()
         self.config_location = config_location
@@ -461,6 +464,7 @@ class Worker(Process):
         self.broker_poller = zmq.Poller()
         self.poll_timeout = poll_timeout * 1000 # Poller uses milliseconds
         self.logresult = logresult
+        self.use_request_scan_level = use_request_scan_level
 
     def perform_scan(self, poll_timeout):
         '''
@@ -551,10 +555,15 @@ class Worker(Process):
 
                     else:
                         return [client_id, b'', b'INVALID REQUEST']
-                     
+
+                    # Determine scan level based on config
+                    # When use_request_scan_level is True, respect the client's requested level
+                    # When False (default for backward compat), force level_minimal
+                    scan_level = externalObject.level if self.use_request_scan_level else level_minimal
+
                     result = ScanResult(
                         source=externalObject.externalVars.source,
-                        level=externalObject.level)
+                        level=scan_level)
                     result.startTime = time.time()
                     try:
                         Dispatch(externalObject.buffer, result, 0,
@@ -890,6 +899,7 @@ def main():
         async_mode = strtobool(get_option('async_mode'))
    
     logresult = strtobool(get_option('log_result'))
+    use_request_scan_level = strtobool(get_option('use_request_scan_level'))
 
     # Get the UserID to run as, if it was not specified on the command line
     # we'll use the current user by default
@@ -934,7 +944,8 @@ def main():
     workers = []
     for _ in range(num_procs):
         worker_proc = Worker(laikaboss_config_path, worker_connect_address, ttl,
-            time_ttl, logresult, int(get_option('workerpolltimeout')), gracetimeout)
+            time_ttl, logresult, int(get_option('workerpolltimeout')), gracetimeout,
+            use_request_scan_level)
         worker_proc.start()
         workers.append(worker_proc)
 
@@ -957,7 +968,8 @@ def main():
         for worker_proc in dead_workers:
             workers.remove(worker_proc)
             new_proc = Worker(laikaboss_config_path, worker_connect_address, ttl, time_ttl,
-                logresult, int(get_option('workerpolltimeout')), gracetimeout)
+                logresult, int(get_option('workerpolltimeout')), gracetimeout,
+                use_request_scan_level)
             new_proc.start()
             workers.append(new_proc)
             worker_proc.join()

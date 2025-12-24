@@ -37,7 +37,6 @@ import argparse
 import json
 import logging
 import os
-import shutil
 import sys
 import tempfile
 import uuid
@@ -100,37 +99,33 @@ def api_scan():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    # Save to temp file
-    temp_dir = tempfile.mkdtemp()
-    try:
-        temp_path = os.path.join(temp_dir, file.filename)
-        file.save(temp_path)
+    # Save to temp file using context manager for automatic cleanup
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            temp_path = os.path.join(temp_dir, file.filename)
+            file.save(temp_path)
 
-        # Scan the file
-        client = config['client']
-        if client is None:
-            return jsonify({'error': 'Scanner not configured'}), 500
+            # Scan the file
+            client = config['client']
+            if client is None:
+                return jsonify({'error': 'Scanner not configured'}), 500
 
-        result = client.scan(temp_path, filename=file.filename)
+            result = client.scan(temp_path, filename=file.filename)
 
-        # Add convenience fields for UI
-        result['_ui'] = {
-            'disposition': get_value_at_path(result, 'disposition'),
-            'disposition_matches': get_value_at_path(result, 'disposition_matches'),
-            'flags': get_value_at_path(result, 'flags'),
-            'modules': get_value_at_path(result, 'modules'),
-            'file_count': get_value_at_path(result, 'file_count'),
-        }
+            # Add convenience fields for UI
+            result['_ui'] = {
+                'disposition': get_value_at_path(result, 'disposition'),
+                'disposition_matches': get_value_at_path(result, 'disposition_matches'),
+                'flags': get_value_at_path(result, 'flags'),
+                'modules': get_value_at_path(result, 'modules'),
+                'file_count': get_value_at_path(result, 'file_count'),
+            }
 
-        return jsonify(result)
+            return jsonify(result)
 
-    except Exception as e:
-        logging.exception("Scan error")
-        return jsonify({'error': str(e)}), 500
-
-    finally:
-        # Cleanup temp directory
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        except Exception as e:
+            logging.exception("Scan error")
+            return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/testcase', methods=['POST'])
@@ -161,7 +156,20 @@ def api_create_testcase():
         # Parse assertions from request
         assertions = []
         for assertion_data in data.get('assertions', []):
-            assertion_type = AssertionType(assertion_data.get('type', 'equals'))
+            # Validate assertion type
+            type_str = assertion_data.get('type', 'equals')
+            try:
+                assertion_type = AssertionType(type_str)
+            except ValueError:
+                valid_types = [t.value for t in AssertionType]
+                return jsonify({
+                    'error': f"Invalid assertion type: '{type_str}'. Valid types: {valid_types}"
+                }), 400
+
+            # Validate required path field
+            if 'path' not in assertion_data:
+                return jsonify({'error': 'Assertion missing required field: path'}), 400
+
             assertions.append(Assertion(
                 path=assertion_data['path'],
                 assertion_type=assertion_type,

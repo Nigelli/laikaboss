@@ -1,4 +1,19 @@
 # laikaassure - Validation tool for laikaboss deployments
+#
+# Build:
+#   docker build -f Docker/DockerfileAssure -t laikaassure:local .
+#
+# Run with ZMQ endpoint (laikad):
+#   docker run -p 5080:5080 laikaassure:local --endpoint tcp://laikad:5558
+#
+# Run with REST endpoint (laikarestd):
+#   docker run -p 5080:5080 laikaassure:local --rest http://laikarestd:5000
+#
+# Run with docker-compose (see laikaassure/docker-compose.yml):
+#   docker-compose -f laikaassure/docker-compose.yml up
+#
+# IMPORTANT: You MUST specify either --endpoint or --rest when running this container.
+
 FROM python:3.10-slim-bookworm
 
 LABEL maintainer="Laikaboss Team"
@@ -30,5 +45,7 @@ ENV PYTHONPATH=/app
 EXPOSE 5080
 
 # Default command runs the web server
-ENTRYPOINT ["python", "-m", "laikaassure.assureserver"]
-CMD ["--host", "0.0.0.0", "--port", "5080"]
+# NOTE: --endpoint or --rest must be provided at runtime
+ENTRYPOINT ["python", "-m", "laikaassure.assureserver", "--host", "0.0.0.0", "--port", "5080"]
+# User must specify --endpoint tcp://host:5558 or --rest http://host:5000
+CMD ["--help"]
