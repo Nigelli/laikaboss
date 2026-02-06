@@ -19,42 +19,56 @@ from laikaboss.util import laika_temp_dir
 from laikaboss import config
 import os
 import tempfile
-import getnetguids
+import dnfile
+
 
 class META_DOTNET(SI_MODULE):
-  def __init__(self):
-    self.module_name = "META_DOTNET"
+    def __init__(self):
+        self.module_name = "META_DOTNET"
 
-  def _run(self, scanObject, result, depth, args):
+    def _run(self, scanObject, result, depth, args):
+        moduleResult = []
+        guids = {}
 
-    moduleResult = []
-    guids = {}
+        try:
+            with laika_temp_dir() as temp_dir, tempfile.NamedTemporaryFile(dir=temp_dir, delete=False) as temp_file_input:
+                temp_file_input_name = temp_file_input.name
+                temp_file_input.write(scanObject.buffer)
+                temp_file_input.flush()
 
-    try:
+            try:
+                pe = dnfile.dnPE(temp_file_input_name)
 
-      with laika_temp_dir() as temp_dir, tempfile.NamedTemporaryFile(dir=temp_dir) as temp_file_input:
-        temp_file_input_name = temp_file_input.name
-        temp_file_input.write(scanObject.buffer)
-        temp_file_input.flush()
+                if hasattr(pe, 'net') and pe.net is not None:
+                    # Get MVID from Module table
+                    if hasattr(pe.net, 'mdtables') and pe.net.mdtables is not None:
+                        module_table = getattr(pe.net.mdtables, 'Module', None)
+                        if module_table and len(module_table.rows) > 0:
+                            mvid_index = module_table.rows[0].Mvid
+                            if pe.net.guids and mvid_index > 0 and mvid_index <= len(pe.net.guids):
+                                guids['MVID'] = str(pe.net.guids[mvid_index - 1])
+                            else:
+                                guids['MVID'] = "None"
+                        else:
+                            guids['MVID'] = "None"
+                    else:
+                        guids['MVID'] = "None"
 
-        # Get guids
-        netguids = getnetguids.get_assembly_guids(temp_file_input_name)
+                    # TypeLib ID - often stored in assembly custom attributes
+                    # For now, set to None as it requires deeper parsing
+                    guids['Typelib_ID'] = "None"
 
-        if netguids:
-          if "typelib_id" in netguids:
-            guids['Typelib_ID'] = netguids['typelib_id']
-          else:
-            guids['Typelib_ID'] = "None"
-          if "mvid" in netguids:
-            guids['MVID'] = netguids['mvid']
-          else:
-            guids['MVID'] = "None"
+                pe.close()
 
-      # Only attach metadata if metadata exists
-      if guids:
-        scanObject.addMetadata(self.module_name, 'DotNet_GUIDs', guids)
+            finally:
+                if os.path.exists(temp_file_input_name):
+                    os.unlink(temp_file_input_name)
 
-    except ScanError:
-      raise
+            # Only attach metadata if we found something useful
+            if guids:
+                scanObject.addMetadata(self.module_name, 'DotNet_GUIDs', guids)
 
-    return moduleResult
+        except ScanError:
+            raise
+
+        return moduleResult
