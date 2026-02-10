@@ -28,22 +28,18 @@ import io
 import tempfile
 import logging
 
-# 3rd-party Python libraries
-try:
-    import libtiff
-    import numpy
-    has_libtiff = True
-except:
-    has_libtiff = False
-
+# 3rd-party Python libraries - will fail at startup if not installed (intentional for security)
+import tifffile
+import numpy
 
 # LaikaBoss imports
 import laikaboss
 import laikaboss.si_module
-import laikaboss.extras.tiff_util
+import laikaboss.objectmodel
 from laikaboss.util import laika_temp_dir
 
-_module_requires = ['libtiff', 'numpy'] #libtiff requires numpy
+_module_requires = ['tifffile', 'numpy']
+
 
 class META_TIFF(laikaboss.si_module.SI_MODULE):
 
@@ -51,172 +47,115 @@ class META_TIFF(laikaboss.si_module.SI_MODULE):
         self.module_name = "META_TIFF"
 
     def _run(self, scanObject, result, depth, args):
-        result = []
+        moduleResult = []
 
-        if has_libtiff:
-            with laika_temp_dir() as tempdir, tempfile.NamedTemporaryFile(dir=tempdir) as fp:
-                tif = self._get_tiff(scanObject, fp)
-
-                if tif is None: # parsing error
-                    scanObject.addFlag('%s:%s' % ('tiff', "PARSING_FAIL"))
-                    return result
-
-                # check if the strips are contiguous
-                try:
-                    if not tif.is_contiguous(): #unsure of why this is here
-                        children = self._parse_tiff_contents(fp.name, tif, scanObject)
-                    else:
-                        children = self._parse_tiff_contents(fp.name, tif, scanObject)
-                    for obj in children:
-                        if isinstance(obj, str):
-                            obj = obj.encode('utf-8', 'replace')
-                        result.append(laikaboss.objectmodel.ModuleObject(buffer=obj, 
-                    externalVars=laikaboss.objectmodel.ExternalVars(filename=scanObject.filename + "_subfile", contentType="text")))
-                except Exception as e:
-                    logging.exception("Unable to parse TIFF file, %s" % [str(e)])
-
-        else:
-            logging.warning("TIFF module disabled - libtiff is not installed")
-
-        return result
-
-    """
-    Create and sanity check the TIFF object.
-    :param scanObject: object to parse
-    :param fp: file object of opened temporary file
-    :return: the tif file object
-    """
-    @staticmethod
-    def _get_tiff(scanObject, fp):
-        tif = None
-        content_file = io.BytesIO(scanObject.buffer)
-
-        # save the data to a tmp file
-        fp.write(content_file.read())
-        fp.flush()
-
-        # open tmp file to read
         try:
-            tif = laikaboss.extras.tiff_util.CustomTiffFile(fp.name)
-        except Exception as e:
-            # cannot load a tiff
-            logging.warning("Unable to parse TIFF file, %s" % [str(e)])
+            with laika_temp_dir() as tempdir, tempfile.NamedTemporaryFile(dir=tempdir, delete=False) as fp:
+                # Write scan object buffer to temp file
+                fp.write(scanObject.buffer)
+                fp.flush()
+                temp_name = fp.name
 
-        return tif
-
-    """
-    Adds metadata for the TIFF file.
-    :param name: name of the temporary TIFF file
-    :param tif: TIFF object
-    :param scanObject: LaikaBoss scan object
-    :return: A list of any child files
-    """
-    @staticmethod
-    def _parse_tiff_contents(name, tif, scanObject):
-        metadata = tif.IFD[0].entries_dict
-        for tag in metadata:
             try:
-                if type(metadata[tag].value) == numpy.memmap:
-                    if 'Name' in tag or 'Description' in tag:
-                        value = metadata[tag].value.tostring()
-                    else:
-                        value = str(metadata[tag].value)
-                else:
-                    value= metadata[tag].value
-            except: #malformed tag
-                value = None
-                scanObject.addFlag('%s:%s' % ('tiff', "MALFORMED_IFD_ENTRY"))
-            scanObject.addMetadata("META_TIFF", tag, value)
+                # Parse TIFF using tifffile
+                with tifffile.TiffFile(temp_name) as tif:
+                    self._extract_metadata(tif, scanObject)
+                    children = self._find_anomalies(tif, scanObject, temp_name)
 
+                    for child_data in children:
+                        if isinstance(child_data, str):
+                            child_data = child_data.encode('utf-8', 'replace')
+                        if child_data and len(child_data) > 0:
+                            moduleResult.append(laikaboss.objectmodel.ModuleObject(
+                                buffer=child_data,
+                                externalVars=laikaboss.objectmodel.ExternalVars(
+                                    filename=scanObject.filename + "_subfile",
+                                    contentType="application/octet-stream"
+                                )
+                            ))
+
+            except Exception as e:
+                logging.warning("META_TIFF: Unable to parse TIFF file: %s" % str(e))
+                scanObject.addFlag('tiff:PARSING_FAIL')
+
+            finally:
+                if os.path.exists(temp_name):
+                    os.unlink(temp_name)
+
+        except Exception as e:
+            logging.exception("META_TIFF error: %s" % str(e))
+
+        return moduleResult
+
+    def _extract_metadata(self, tif, scanObject):
+        """Extract TIFF metadata and add to scan object."""
+        try:
+            for page_idx, page in enumerate(tif.pages):
+                # Extract standard TIFF tags
+                for tag in page.tags.values():
+                    tag_name = tag.name
+                    try:
+                        if isinstance(tag.value, numpy.ndarray):
+                            if 'Name' in tag_name or 'Description' in tag_name:
+                                value = tag.value.tobytes().decode('utf-8', 'replace')
+                            else:
+                                value = str(tag.value.tolist())
+                        else:
+                            value = tag.value
+
+                        scanObject.addMetadata(self.module_name, f"{tag_name}", value)
+                    except Exception as e:
+                        scanObject.addFlag('tiff:MALFORMED_IFD_ENTRY')
+                        logging.debug(f"META_TIFF: Malformed tag {tag_name}: {e}")
+
+                # Only process first page for metadata
+                break
+
+        except Exception as e:
+            logging.warning("META_TIFF: Error extracting metadata: %s" % str(e))
+
+    def _find_anomalies(self, tif, scanObject, filename):
+        """Check for TIFF anomalies and extract hidden data."""
         children = []
-        unknown_bytes_size_thresh = 10
-        overlapping_bytes_size_thresh = 40
+        file_size = os.path.getsize(filename)
 
-        # file stats
-        file_stat_info = os.stat(name)
-        
-        # get some basic information from the image
-        eof_strip = tif.get_eof_strip()
+        try:
+            # Check for data after the last IFD
+            last_offset = 0
+            for page in tif.pages:
+                for tag in page.tags.values():
+                    if hasattr(tag, 'valueoffset') and tag.valueoffset:
+                        end_offset = tag.valueoffset + (tag.count * tifffile.TIFF.DATATYPES[tag.dtype].itemsize if hasattr(tag, 'dtype') else 0)
+                        last_offset = max(last_offset, end_offset)
 
-        # get biggest strip
-        max_strip = tif.get_biggest_strip()
+                # Check strip/tile offsets
+                if hasattr(page, 'dataoffsets') and page.dataoffsets is not None:
+                    for offset, bytecount in zip(page.dataoffsets, page.databytecounts):
+                        end_offset = offset + bytecount
+                        last_offset = max(last_offset, end_offset)
 
-        # get all unknown strips
-        unknown_strips = tif.get_unknown_sections(unknown_bytes_size_thresh)
+            # Check if there's extra data after the TIFF structure
+            if last_offset > 0 and last_offset < file_size:
+                extra_bytes = file_size - last_offset
+                if extra_bytes > 10:  # threshold for unknown bytes
+                    scanObject.addFlag('tiff:EXTRA_DATA_AFTER_EOF')
+                    # Extract the extra data
+                    with open(filename, 'rb') as f:
+                        f.seek(last_offset)
+                        extra_data = f.read()
+                        if extra_data and len(extra_data.strip(b'\x00')) > 0:
+                            children.append(extra_data)
 
-        # get all overlapping strips
-        overlapping_strips = tif.get_memory_overlap(overlapping_bytes_size_thresh)
+            # Check for strips that extend beyond file size
+            for page in tif.pages:
+                if hasattr(page, 'dataoffsets') and page.dataoffsets is not None:
+                    for offset, bytecount in zip(page.dataoffsets, page.databytecounts):
+                        if offset + bytecount > file_size:
+                            scanObject.addFlag('tiff:STRIP_OUT_OF_BOUNDS')
+                        if offset > file_size:
+                            scanObject.addFlag('tiff:CORRUPTED')
 
-        # Make sure the eof is not somewhere else in the image but
-        # at the end of the image
-        if eof_strip[1] != file_stat_info.st_size:
-            scanObject.addFlag('%s:%s' % ('tiff', "CORRUPTED"))
-
-        # Make sure the biggest strip is the eof
-        if eof_strip[1] != max_strip[1] and max_strip[1] <= file_stat_info.st_size:
-            scanObject.addFlag('%s:%s' % ('tiff', "MISSING_EOF"))
-
-        elif eof_strip[1] != max_strip[1] and max_strip[1] > file_stat_info.st_size:
-            scanObject.addFlag('%s:%s' % ('tiff',"EXTRA_STRIPS"))
-
-        for entry in overlapping_strips:
-            if entry['last_start'] > entry['last_end']:
-                scanObject.addFlag('%s:%s' % ('tiff', "CORRUPTED"))
-                return children
-
-            if entry['start'] > entry['end']:
-                scanObject.addFlag('%s:%s' % ('tiff', "CORRUPTED"))
-                return children
-
-            if entry['last_start'] > eof_strip[1] or entry['last_end'] > eof_strip[1]:
-                scanObject.addFlag('%s:%s' % ('tiff', "STRIP_OUT_OF_BOUNDS"))
-
-            if entry['start'] > eof_strip[1] or entry['end'] > eof_strip[1]:
-                scanObject.addFlag('%s:%s' % ('tiff', "STRIP_OUT_OF_BOUNDS"))
-
-            # check how many bytes the last strip if over lapping the new one.
-            ol_bytes = entry['last_end'] - entry['start']
-            if ol_bytes > 0:
-                last_strip_size = entry['last_end'] - entry['last_start']
-                strip_size = entry['end'] - entry['start']
-                if last_strip_size > 0:
-                    byte_data = None
-                    byte_data = META_TIFF._read_file_bytes(scanObject.buffer, entry['last_start'], last_strip_size)
-                    if byte_data:
-                        pass # TODO: should we process this?
-                if strip_size > 0:
-                    byte_data = None
-                    byte_dat = META_TIFF._read_file_bytes(scanObject.buffer, entry['start'], strip_size)
-                    if byte_data:
-                        pass # TODO should we process this??
-
-        strip_counter = 0
-        for strip in unknown_strips:
-            # extract bytes chunk from the file
-            byte_data = None
-            if strip['size'] > 0:
-                byte_data = META_TIFF._read_file_bytes(scanObject.buffer, strip['start'], strip['size'])
-
-                # base on the mime send it to other process.
-                if byte_data and len(byte_data.strip("\x00")) > 0:
-                    children.append(byte_data)
-            strip_counter += 1
+        except Exception as e:
+            logging.debug("META_TIFF: Error checking anomalies: %s" % str(e))
 
         return children
-
-
-    """
-    Read a block of bytes from file and return the bytes
-    :param name: name of the temporary TIFF file
-    :param tif: TIFF object
-    :return: block of bytes or None if the request is invalid
-    """
-    @staticmethod
-    def _read_file_bytes(file, start, bsize):
-        
-        if start > len(file):
-            logging.error("TIFF: Unable to extract file chink, start (%d) is greater than filesize (%d)" %[start, len(file.contents)])
-            return None
-        
-        return file[start:start+bsize]
-
