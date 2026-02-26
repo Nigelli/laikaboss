@@ -51,6 +51,8 @@ javatools
 pycdlib
 biplist
 natsort
+tifffile
+dnfile
 
 # ZMQ for laikad network communication
 pyzmq
