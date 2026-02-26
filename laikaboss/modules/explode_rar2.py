@@ -27,7 +27,7 @@ import tempfile
 import rarfile
 import os
 import re
-from distutils.util import strtobool
+from laikaboss.util import strtobool
 
 from laikaboss import config
 from laikaboss.objectmodel import ExternalVars, ModuleObject

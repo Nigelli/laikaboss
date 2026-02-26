@@ -16,7 +16,6 @@ cffi
 chardet
 cryptography
 interruptingcow
-ipaddress
 IPy
 olefile
 pexpect
@@ -33,7 +32,6 @@ requests
 six
 ssdeep
 tnefparse
-typing
 yara-python==4.2.0
 oletools
 pdfminer.six
@@ -45,6 +43,7 @@ msoffcrypto-tool
 lxml
 pyzbar
 LnkParse3
+PyYAML
 M2Crypto
 extract-msg
 jinja2
@@ -66,15 +65,9 @@ scikit-learn
 # Logging
 fluent-logger
 
-# Testing
-nose
-nose2
-mock
-
 # Utilities
 python-dateutil
 watchdog
-backports.lzma
 pyaio
 progressbar33
 msgpack-python
@@ -84,10 +77,3 @@ pyOpenSSL
 ndg-httpsclient
 pyasn1
 bcrypt
-
-# Development
-pip-tools
-flake8
-remote-pdb
-psutil
-gitpython

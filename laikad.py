@@ -47,7 +47,7 @@ import zlib
 import zmq
 import json
 import base64
-from distutils.util import strtobool
+from laikaboss.util import strtobool
 
 SHUTDOWN_GRACE_TIMEOUT_DEFAULT = 30
 

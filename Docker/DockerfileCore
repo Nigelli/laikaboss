@@ -1,44 +1,44 @@
-# DockerfileCoreSlim - Multi-stage build for minimal ZeroMQ-based Laika BOSS Scanner
+# DockerfileCore - Multi-stage build for minimal ZeroMQ-based Laika BOSS Scanner
 #
 # A lightweight container for the core laikad (ZMQ) scanner using multi-stage build
 # to minimize final image size. No Redis, no REST API, no web frontend - just the scanner.
 #
 # Build:
-#   docker build -f Docker/DockerfileCoreSlim -t laikaboss-core:slim .
+#   docker build -f Docker/DockerfileCore -t laikaboss-core:latest .
 #
 # Run standalone scanner:
-#   docker run --rm -v ~/workdir:/home/laikaboss/workdir laikaboss-core:slim \
+#   docker run --rm -v ~/workdir:/home/laikaboss/workdir laikaboss-core:latest \
 #     laika.py /home/laikaboss/workdir/testfile | jq .
 #
 # Run networked daemon:
-#   docker run --rm -p 5558:5558 laikaboss-core:slim laikad.py -d
+#   docker run --rm -p 5558:5558 laikaboss-core:latest laikad.py -d
 #
 # Scan via network client:
-#   docker run --rm -v ~/workdir:/home/laikaboss/workdir --network host laikaboss-core:slim \
+#   docker run --rm -v ~/workdir:/home/laikaboss/workdir --network host laikaboss-core:latest \
 #     cloudscan.py -a tcp://localhost:5558 /home/laikaboss/workdir/testfile
 
 # =====================================================
 # Stage 1: Builder - Full build environment
 # =====================================================
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:24.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUSERBASE=/opt/venvs/laikaboss
 ENV PATH="/opt/venvs/laikaboss/bin:${PATH}"
 
-# Install base packages
+# Install base build packages
 RUN apt-get update && \
     apt-get -y install software-properties-common && \
     apt-add-repository -y multiverse && \
     apt-get -qq update && apt-get install -y \
     curl \
     apt-utils \
-    libpython3.10-dev \
+    libpython3-dev \
     python3-pip \
     libssl-dev
 
 # Update setuptools and packaging
-RUN pip3 install --user setuptools==68.0.0 packaging==23.1
+RUN pip3 install --user --break-system-packages setuptools==68.0.0 packaging==23.1
 
 # Copy and install system packages using project script
 COPY dependencies/ /var/run/laikaboss/dependencies/
@@ -49,19 +49,19 @@ RUN cd /var/run/laikaboss/ && \
     chmod +x scripts/install-pkg-deps.sh && \
     ./scripts/install-pkg-deps.sh deb-requirements-core.txt
 
-# Create llvm-config symlink if llvm-config-14 exists
-RUN if command -v llvm-config-14 >/dev/null 2>&1; then \
-      ln -sf /usr/bin/llvm-config-14 /usr/bin/llvm-config; \
+# Create llvm-config symlink for the installed version
+RUN if command -v llvm-config-18 >/dev/null 2>&1; then \
+      ln -sf /usr/bin/llvm-config-18 /usr/bin/llvm-config; \
     fi
 
-# Install Python dependencies
-RUN pip3 install --user pip==21.3.1 pip-tools
+# Install Python dependencies (pip 23.3+ required for Python 3.12 compatibility)
+RUN pip3 install --user --break-system-packages pip==23.3.2
 
 COPY requirements-core.in /var/run/laikaboss/
 
 # Install from .in file (dependencies dir must be present for file: references)
 RUN cd /var/run/laikaboss/ && \
-    python3 -m pip install --user --upgrade -r requirements-core.in
+    python3 -m pip install --user --break-system-packages --upgrade -r requirements-core.in
 
 # Copy and install laikaboss core package
 COPY setup_core.py /tmp/laikaboss/
@@ -73,15 +73,25 @@ RUN cd /tmp/laikaboss && \
     python3 setup_core.py build && \
     python3 setup_core.py install --user --prefix=
 
+# Clean up build artifacts from the venv before copying to runtime
+RUN find /opt/venvs/laikaboss -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null; \
+    find /opt/venvs/laikaboss -type d -name 'tests' -exec rm -rf {} + 2>/dev/null; \
+    find /opt/venvs/laikaboss -type d -name 'test' -exec rm -rf {} + 2>/dev/null; \
+    find /opt/venvs/laikaboss -name '*.pyc' -delete 2>/dev/null; \
+    find /opt/venvs/laikaboss -name '*.pyo' -delete 2>/dev/null; \
+    rm -rf /opt/venvs/laikaboss/lib/python3.12/site-packages/pip* ; \
+    rm -rf /opt/venvs/laikaboss/lib/python3.12/site-packages/wheel* ; \
+    true
+
 # =====================================================
 # Stage 2: Runtime - Minimal production image
 # =====================================================
-FROM ubuntu:22.04 AS runtime
+FROM ubuntu:24.04 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUSERBASE=/opt/venvs/laikaboss
 ENV PATH="/opt/venvs/laikaboss/bin:${PATH}"
-ENV LANG=en_US.UTF-8
+ENV LANG=C.UTF-8
 
 # Create laikaboss user with specific UID/GID (must match builder for file ownership)
 RUN groupadd -r laikaboss -g 21043 && \
@@ -95,10 +105,9 @@ RUN apt-get update && \
     apt-add-repository -y multiverse && \
     apt-get -qq update && \
     apt-get install -y --no-install-recommends \
-    # Python runtime
-    python3.10 \
-    python3.10-distutils \
-    libpython3.10 \
+    # Python runtime (minimal)
+    python3-minimal \
+    libpython3.12 \
     # Archive tools (required by explode_* modules)
     p7zip-full \
     unrar \
@@ -107,32 +116,29 @@ RUN apt-get update && \
     # Metadata extraction
     exif \
     libimage-exiftool-perl \
-    # Java runtime (not JDK - saves ~300MB)
-    openjdk-11-jre-headless \
+    # Java runtime (JRE only, not JDK - saves ~300MB)
+    openjdk-21-jre-headless \
     # Runtime shared libraries (not -dev versions)
     libzmq5 \
     libfuzzy2 \
-    libre2-9 \
+    libre2-10 \
     liblzma5 \
     libsnappy1v5 \
     zlib1g \
     libjpeg-turbo8 \
-    libtiff5 \
+    libtiff6 \
     libzbar0 \
-    libffi7 \
+    libffi8 \
     libmagic1 \
-    libssl3 \
+    libssl3t64 \
     # Init system
     dumb-init \
-    # Locales and utilities
-    locales \
+    # Utilities
     jq \
     ca-certificates \
+    && apt-get remove -y software-properties-common \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
-
-# Generate locales
-RUN locale-gen en_US.UTF-8 && \
-    localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 
 # Copy the entire Python environment from builder
 COPY --from=builder /opt/venvs/laikaboss /opt/venvs/laikaboss

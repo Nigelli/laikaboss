@@ -37,7 +37,7 @@ from laikaboss.clientLib import Client, getRootObject, get_scanObjectUID, \
 from random import randint
 import json
 from copy import deepcopy as clone_object
-from distutils.util import strtobool
+from laikaboss.util import strtobool
 
 job_queue = Queue()
 result_queue = Queue()
