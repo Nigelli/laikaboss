@@ -1,0 +1,159 @@
+# DockerfileCoreSlim - Multi-stage build for minimal ZeroMQ-based Laika BOSS Scanner
+#
+# A lightweight container for the core laikad (ZMQ) scanner using multi-stage build
+# to minimize final image size. No Redis, no REST API, no web frontend - just the scanner.
+#
+# Build:
+#   docker build -f Docker/DockerfileCoreSlim -t laikaboss-core:slim .
+#
+# Run standalone scanner:
+#   docker run --rm -v ~/workdir:/home/laikaboss/workdir laikaboss-core:slim \
+#     laika.py /home/laikaboss/workdir/testfile | jq .
+#
+# Run networked daemon:
+#   docker run --rm -p 5558:5558 laikaboss-core:slim laikad.py -d
+#
+# Scan via network client:
+#   docker run --rm -v ~/workdir:/home/laikaboss/workdir --network host laikaboss-core:slim \
+#     cloudscan.py -a tcp://localhost:5558 /home/laikaboss/workdir/testfile
+
+# =====================================================
+# Stage 1: Builder - Full build environment
+# =====================================================
+FROM ubuntu:22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUSERBASE=/opt/venvs/laikaboss
+ENV PATH="/opt/venvs/laikaboss/bin:${PATH}"
+
+# Install base packages
+RUN apt-get update && \
+    apt-get -y install software-properties-common && \
+    apt-add-repository -y multiverse && \
+    apt-get -qq update && apt-get install -y \
+    curl \
+    apt-utils \
+    libpython3.10-dev \
+    python3-pip \
+    libssl-dev
+
+# Update setuptools and packaging
+RUN pip3 install --user setuptools==68.0.0 packaging==23.1
+
+# Copy and install system packages using project script
+COPY dependencies/ /var/run/laikaboss/dependencies/
+COPY scripts/install-pkg-deps.sh /var/run/laikaboss/scripts/
+COPY deb-requirements-core.txt /var/run/laikaboss/
+
+RUN cd /var/run/laikaboss/ && \
+    chmod +x scripts/install-pkg-deps.sh && \
+    ./scripts/install-pkg-deps.sh deb-requirements-core.txt
+
+# Create llvm-config symlink if llvm-config-14 exists
+RUN if command -v llvm-config-14 >/dev/null 2>&1; then \
+      ln -sf /usr/bin/llvm-config-14 /usr/bin/llvm-config; \
+    fi
+
+# Install Python dependencies
+RUN pip3 install --user pip==21.3.1 pip-tools
+
+COPY requirements-core.in /var/run/laikaboss/
+
+# Install from .in file (dependencies dir must be present for file: references)
+RUN cd /var/run/laikaboss/ && \
+    python3 -m pip install --user --upgrade -r requirements-core.in
+
+# Copy and install laikaboss core package
+COPY setup_core.py /tmp/laikaboss/
+COPY laikaboss/ /tmp/laikaboss/laikaboss/
+COPY etc/ /tmp/laikaboss/etc/
+COPY laika.py laikad.py cloudscan.py /tmp/laikaboss/
+
+RUN cd /tmp/laikaboss && \
+    python3 setup_core.py build && \
+    python3 setup_core.py install --user --prefix=
+
+# =====================================================
+# Stage 2: Runtime - Minimal production image
+# =====================================================
+FROM ubuntu:22.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUSERBASE=/opt/venvs/laikaboss
+ENV PATH="/opt/venvs/laikaboss/bin:${PATH}"
+ENV LANG=en_US.UTF-8
+
+# Create laikaboss user with specific UID/GID (must match builder for file ownership)
+RUN groupadd -r laikaboss -g 21043 && \
+    useradd -r -u 21043 -g laikaboss -d /home/laikaboss -s /bin/bash -c "Laika User" laikaboss && \
+    mkdir -p /home/laikaboss/workdir && \
+    chown -R laikaboss:laikaboss /home/laikaboss
+
+# Install runtime-only dependencies (no build tools, no -dev packages)
+RUN apt-get update && \
+    apt-get -y install software-properties-common && \
+    apt-add-repository -y multiverse && \
+    apt-get -qq update && \
+    apt-get install -y --no-install-recommends \
+    # Python runtime
+    python3.10 \
+    python3.10-distutils \
+    libpython3.10 \
+    # Archive tools (required by explode_* modules)
+    p7zip-full \
+    unrar \
+    unzip \
+    zip \
+    # Metadata extraction
+    exif \
+    libimage-exiftool-perl \
+    # Java runtime (not JDK - saves ~300MB)
+    openjdk-11-jre-headless \
+    # Runtime shared libraries (not -dev versions)
+    libzmq5 \
+    libfuzzy2 \
+    libre2-9 \
+    liblzma5 \
+    libsnappy1v5 \
+    zlib1g \
+    libjpeg-turbo8 \
+    libtiff5 \
+    libzbar0 \
+    libffi7 \
+    libmagic1 \
+    libssl3 \
+    # Init system
+    dumb-init \
+    # Locales and utilities
+    locales \
+    jq \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Generate locales
+RUN locale-gen en_US.UTF-8 && \
+    localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+
+# Copy the entire Python environment from builder
+COPY --from=builder /opt/venvs/laikaboss /opt/venvs/laikaboss
+
+# Copy configuration files installed by setup_core.py
+COPY --from=builder /etc/laikaboss /etc/laikaboss
+
+# Create runtime directories
+RUN mkdir -p /var/log/laikaboss /var/laikaboss/tmp && \
+    chown -R laikaboss:laikaboss /var/log/laikaboss /var/laikaboss /etc/laikaboss && \
+    chmod 775 /var/log/laikaboss
+
+# Update shared library cache
+RUN ldconfig
+
+USER laikaboss
+WORKDIR /home/laikaboss
+
+# ZMQ broker port
+EXPOSE 5558
+
+# Default: interactive shell
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/bin/bash"]

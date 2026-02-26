@@ -1,0 +1,32 @@
+# docker-compose.yml - Laikaassure validation tool
+#
+# Standalone compose for running laikaassure against an existing laikaboss instance.
+#
+# Build:
+#   docker compose build
+#
+# Run (connects to laikaboss on localhost:5558):
+#   docker compose up
+#
+# Run with custom endpoint:
+#   LAIKA_ENDPOINT=tcp://myhost:5558 docker compose up
+#
+# Then open http://localhost:5080 in your browser.
+
+services:
+  laikaassure:
+    build:
+      context: ..
+      dockerfile: Docker/DockerfileAssure
+    image: laikaassure:latest
+    ports:
+      - "5080:5080"
+    volumes:
+      - ./testcases:/app/laikaassure/testcases
+    environment:
+      - LAIKA_ENDPOINT=${LAIKA_ENDPOINT:-tcp://host.docker.internal:5558}
+    command: >
+      --host 0.0.0.0
+      --port 5080
+      --endpoint ${LAIKA_ENDPOINT:-tcp://host.docker.internal:5558}
+      --timeout 120

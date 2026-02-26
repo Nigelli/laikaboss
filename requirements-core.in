@@ -1,0 +1,93 @@
+# requirements-core.in
+# Core scanner dependencies only - no REST API, Redis queue, mail server, or storage
+#
+# To generate requirements-core.txt:
+#   pip-compile --output-file=requirements-core.txt requirements-core.in
+
+# Local dependencies for scanning modules
+file:dependencies/binwalk.tar.gz
+file:dependencies/GetNETGUIDs.tar.gz
+file:dependencies/castleblack.tar.gz
+
+# Core scanning module dependencies
+pefile
+beautifulsoup4
+cffi
+chardet
+cryptography
+interruptingcow
+ipaddress
+IPy
+olefile
+pexpect
+Pillow
+ptyprocess
+pyClamd
+pycparser
+pyexiftool
+pylzma
+python-snappy
+pytz
+rarfile
+requests
+six
+ssdeep
+tnefparse
+typing
+yara-python==4.2.0
+oletools
+pdfminer.six
+macholib
+pyparsing
+geoip2
+defusedxml
+msoffcrypto-tool
+lxml
+pyzbar
+LnkParse3
+M2Crypto
+extract-msg
+jinja2
+javatools
+pycdlib
+biplist
+natsort
+
+# ZMQ for laikad network communication
+pyzmq
+gevent
+greenlet
+
+# ML/analysis modules (used by some scanning modules)
+numpy
+scipy
+scikit-learn
+
+# Logging
+fluent-logger
+
+# Testing
+nose
+nose2
+mock
+
+# Utilities
+python-dateutil
+watchdog
+backports.lzma
+pyaio
+progressbar33
+msgpack-python
+
+# Crypto/SSL
+pyOpenSSL
+ndg-httpsclient
+pyasn1
+bcrypt
+
+# Development
+pip-tools
+flake8
+remote-pdb
+psutil
+gitpython
