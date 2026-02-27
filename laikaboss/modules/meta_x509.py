@@ -141,7 +141,7 @@ class META_X509(SI_MODULE):
             try:
                 if getattr(dn, field):
                     return_value[field] = getattr(dn, field)
-            except TypeError: #Ignore if field name is None
+            except (TypeError, AttributeError):
                 pass
                      
         return return_value
