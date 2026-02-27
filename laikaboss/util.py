@@ -28,6 +28,19 @@ import tempfile
 import datetime
 import time
 import socket
+
+# Python 3.12+ removed distutils; provide strtobool for compat
+try:
+    from distutils.util import strtobool
+except ImportError:
+    def strtobool(val):
+        val = str(val).strip().lower()
+        if val in ('y', 'yes', 't', 'true', 'on', '1'):
+            return 1
+        elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+            return 0
+        else:
+            raise ValueError("invalid truth value %r" % (val,))
 from contextlib import contextmanager
 from laikaboss.objectmodel import QuitScanException, GlobalScanTimeoutError, GlobalModuleTimeoutError
 from laikaboss import config

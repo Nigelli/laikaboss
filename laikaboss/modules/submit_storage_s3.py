@@ -13,7 +13,7 @@ from math import isnan, isinf
 from laikaboss.si_module import SI_MODULE
 from laikaboss.util import get_option, log_module_error
 from laikaboss.extras.extra_util import config_path, safe_filename, parse_log_record, parse_log_record_nonsummary, Lock
-from distutils.util import strtobool
+from laikaboss.util import strtobool
 from laikaboss.objectmodel import QuitScanException, GlobalScanTimeoutError, GlobalModuleTimeoutError
 import hashlib
 import fnmatch

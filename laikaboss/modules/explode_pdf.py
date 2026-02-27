@@ -24,7 +24,8 @@ import pdfminer
 import pdfminer.ccitt
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument, PDFEncryptionError, PDFPasswordIncorrect
-from pdfminer.pdftypes import PDFStream, PDFObjectNotFound, PDFObjRef, PSException, PDFException, int_value
+from pdfminer.pdftypes import PDFStream, PDFObjectNotFound, PDFObjRef, PDFException, int_value
+from pdfminer.psexceptions import PSException
 from pdfminer.psparser import PSEOF, LIT, PSLiteral
 import io
 import sys

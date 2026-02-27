@@ -28,7 +28,6 @@ import sys
 import base64
 import urllib.request, urllib.parse, urllib.error
 import html.entities
-from future.backports.html.entities import html5
 from laikaboss.util import get_option
 from laikaboss.extras.extra_util import str_to_bool
 
@@ -59,16 +58,6 @@ class SCAN_HTML(SI_MODULE):
 
     def __init__(self):
         self.module_name = "SCAN_HTML"
-        #Add html5 entities from python 3 to list of supported entities
-        if sys.version_info[0] < 3:
-            for html5_entity in html5:
-                ent = html5_entity[:-1]
-                html.entities.entitydefs[ent] = html5[html5_entity]
-                #Multi-character entities don't work with name2codepoint
-                if len(html5[html5_entity]) <= 1:
-                    cp = ord(html5[html5_entity])
-                    html.entities.name2codepoint[ent] = cp
-                    html.entities.codepoint2name[cp] = ent
 
     def _run(self, scanObject, result, depth, args):
         result = []

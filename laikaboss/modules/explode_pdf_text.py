@@ -24,7 +24,8 @@ from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter
 from pdfminer.cmapdb import CMapDB
 from pdfminer.layout import LAParams
 from pdfminer.image import ImageWriter
-from pdfminer.pdftypes import PSException, PDFException, int_value
+from pdfminer.pdftypes import PDFException, int_value
+from pdfminer.psexceptions import PSException
 
 # Import classes and helpers from the Laika framework
 from laikaboss.util import get_option

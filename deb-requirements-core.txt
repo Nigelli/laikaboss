@@ -15,7 +15,7 @@ unrar
 unzip
 zip
 libjpeg-dev
-libtiff5-dev
+libtiff-dev
 libzbar0
 libzmq3-dev
 libfuzzy-dev
@@ -24,7 +24,7 @@ swig
 exif
 libimage-exiftool-perl
 libre2-dev
-llvm-14
-openjdk-11-jdk-headless
+llvm-18
+openjdk-21-jdk-headless
 jq
 git

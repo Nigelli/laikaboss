@@ -48,7 +48,10 @@ class META_EXIFTOOL(SI_MODULE):
             temp_file.write(scanObject.buffer)
             temp_file.flush() 
             with exiftool.ExifTool() as et:
-                metaDict = json.loads(et.execute(b"-j",exiftool.fsencode(temp_file_name)).decode("utf-8", errors="replace"))[0]
+                raw = et.execute(b"-j", temp_file_name.encode())
+                if isinstance(raw, bytes):
+                    raw = raw.decode("utf-8", errors="replace")
+                metaDict = json.loads(raw)[0]
             if metaDict:
                 i = 0
                 for k,v in metaDict.items():
